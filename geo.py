@@ -75,10 +75,7 @@ class VecMath:
 
     @staticmethod
     def lerp(v1, v2, dt):
-        x_diff = (v1.x + v2.x) * dt
-        y_diff = (v1.y + v2.y) * dt
-
-        return Vector2(x_diff, y_diff)
+        return VecMath.mul(VecMath.add(v1, v2), Vector2(dt, dt))
 
 class Rectangle:
     def __init__(self, position, dimension):
@@ -1073,7 +1070,13 @@ class EditorLevel(Level):
         if level_get is None:
             super().__init__("Editor", EditorLevel.level_data)
         else:
-            super().__init__("Editor", level_get)
+            def get():
+                retrived = level_get()
+                for i in retrived[:]:
+                    if type(i) == Player or type(i) == Ground:
+                        retrived.remove(i)
+                return EditorLevel.level_data() + retrived
+            super().__init__("Editor", get)
     
     @staticmethod
     def level_data():
@@ -1160,13 +1163,13 @@ class TestLevel(Level):
                     WinWall( Vector2(5_200, 0) )
                 ]
 
-class Test2Level(Level):
+class HardLevel(Level):
     def __init__(self):
-        super().__init__("Very Testy Level", Test2Level.level_data)
+        super().__init__("HardLevel", HardLevel.level_data)
     
     @staticmethod
     def level_data():
-        return [Player(), Ground(), Tile(Vector2(355.0, 245.0), Vector2(50.0, 50.0)), Tile(Vector2(405.0, 245.0), Vector2(50.0, 50.0)), Tile(Vector2(305.0, 245.0), Vector2(50.0, 50.0))]
+        return [Player(Vector2(-400.0, 0.0)), Ground(), GravityPad(Vector2(-365, 120)), GravityPad(Vector2(-315, 120)), GravityPad(Vector2(-275, -20)), GravityPad(Vector2(-225, -20)), Spike(Vector2(-100.0, 300.0), 0), Tile(Vector2(75.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(100.0, 250.0), 0), Tile(Vector2(315.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(315.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(365.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(415.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(465.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(290.0, 300.0), 90), Spike(Vector2(290.0, 260.0), 90), Spike(Vector2(490.0, 200.0), 360), Spike(Vector2(530.0, 200.0), 360), Tile(Vector2(515.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(570.0, 200.0), 360), Tile(Vector2(615.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(665.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(715.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(740.0, 200.0), 360), Tile(Vector2(765.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(765.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(790.0, 150.0), 360), JumpOrb(Vector2(750, 125)), Tile(Vector2(815.0, 100.0), Vector2(50.0, 50.0)), Spike(Vector2(840.0, 100.0), 360), Tile(Vector2(815.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(815.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(815.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(865.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(890.0, 50.0), 360), Tile(Vector2(995.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(1020.0, 50.0), 360), Tile(Vector2(865.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1045.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1095.0, 150.0), Vector2(50.0, 50.0)), Spike(Vector2(1070.0, 100.0), 360), Spike(Vector2(1120.0, 150.0), 360), Tile(Vector2(1145.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(1170.0, 200.0), 360), Tile(Vector2(1195.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1245.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 150.0), Vector2(50.0, 50.0)), Spike(Vector2(1370.0, 200.0), 1350), Spike(Vector2(1370.0, 150.0), 1350), Spike(Vector2(1370.0, 100.0), 1350), Spike(Vector2(1370.0, 50.0), 1350), Tile(Vector2(1295.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 50.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 0.0), Vector2(50.0, 50.0)), GravityPad(Vector2(1465, 290)), Tile(Vector2(1295.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1345.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1395.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1445.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1495.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1545.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1595.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1645.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1695.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1745.0, -50.0), Vector2(50.0, 50.0)), Spike(Vector2(1680.0, 50.0), 2340), Spike(Vector2(1710.0, 50.0), 2340), Spike(Vector2(1650.0, 50.0), 2340), Tile(Vector2(1795.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1845.0, -50.0), Vector2(50.0, 50.0)), Spike(Vector2(1880.0, 50.0), 2700), Tile(Vector2(1905.0, -20.0), Vector2(50.0, 50.0)), Spike(Vector2(1930.0, 80.0), 4140), Tile(Vector2(1905.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1875.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(2025.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2075.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2125.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2175.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2225.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2275.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2325.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2375.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2475.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2675.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2725.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2775.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2825.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2875.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2925.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2975.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3025.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3075.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3125.0, -620.0), Vector2(50.0, 50.0))]
 
 win_inited = False
 def main():
@@ -1174,7 +1177,7 @@ def main():
     global win_inited
     
     game = Game()
-    game.set_level(EditorLevel()) # SET LEVEL
+    game.set_level(EditorLevel(HardLevel.level_data)) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
@@ -1211,7 +1214,8 @@ def main():
         if player is not None:
             desired_cam_y = 0
             if not player.halted and player.position.y < -200:
-                desired_cam_y = VecMath.lerp(cam.target, player.position, 0.15).y
+                # desired_cam_y = ((cam.target.y + player.position.y) * 0.6) + 100
+                desired_cam_y = VecMath.lerp(Vector2(cam.target.x, cam.target.y + 200), player.position, 0.5).y
 
             desired_cam_x = player.position.x
             if player.halted:
