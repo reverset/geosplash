@@ -667,7 +667,7 @@ class Pad(GameObj):
     HEIGHT = 10
 
     def clone(self):
-        return type(self)(self.pos)
+        return type(self)(self.position)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(Vector2({self.position.x}, {self.position.y}))"
@@ -693,7 +693,7 @@ class Pad(GameObj):
         
     def logic(self):
         if self.already_touched: return
-        if self.player.area is None: return
+        if self.player is None or self.player.area is None: return
         
         verts = self.area.vertices()
         
@@ -740,8 +740,16 @@ class GravityPad(Pad):
     
 class WinWall(GameObj):
 
+    WIDTH = 1_000
+    HEIGHT = 20_000
+    Y_POS = -10_000
+    COLOR = GREEN
+
     def __repr__(self):
         return f"WinWall(Vector2({self.position.x}, {self.position.y}))"
+
+    def clone(self):
+        return WinWall(clone_vec(self.position))
 
     def __init__(self, pos):
         super().__init__()
@@ -782,6 +790,8 @@ class WinWall(GameObj):
         self.player.rotation += int(self.rot_vel)
 
     def logic(self):
+        if self.player is None: return
+
         if self.player.position.x > self.position.x - 400:
             if not self.player.halted:
                 self.player.halt()
@@ -789,7 +799,7 @@ class WinWall(GameObj):
 
     def draw(self):
         p = VecMath.floor_i(self.position)
-        draw_rectangle(p.x, -10_000, 1_000, 20_000, GREEN)
+        draw_rectangle(p.x, WinWall.Y_POS, WinWall.WIDTH, WinWall.HEIGHT, WinWall.COLOR)
 
 class Item:
     def __init__(self, name):
@@ -872,10 +882,45 @@ class GravityOrbItem(Item):
 class JumpPadItem(Item):
     def __init__(self):
         super().__init__("JumpPad")
-    
+
+    def offset(self, where):
+        w = VecMath.floor_i(where)
+        w.x -= Pad.WIDTH // 2
+        w.y += 5 # to align with ground
+        return w
+
     def draw_preview(self, where):
         draw_rectangle(where.x, where.y, Pad.WIDTH, Pad.HEIGHT, JumpPad.COLOR)
-       
+    
+    def place(self, where, _rot):
+        return JumpPad(where)
+
+class GravityPadItem(Item):
+    def __init__(self):
+        super().__init__("GravityPad")
+
+    def offset(self, where):
+        w = VecMath.floor_i(where)
+        w.x -= Pad.WIDTH // 2
+        w.y += 5 # to align with ground
+        return w
+
+    def draw_preview(self, where):
+        draw_rectangle(where.x, where.y, Pad.WIDTH, Pad.HEIGHT, GravityPad.COLOR)
+    
+    def place(self, where, _rot):
+        return GravityPad(where)
+
+class WinWallItem(Item):
+    def __init__(self):
+        super().__init__("WinWall")
+    
+    def draw_preview(self, where):
+        draw_rectangle(where.x, WinWall.Y_POS, WinWall.WIDTH, WinWall.HEIGHT, WinWall.COLOR)
+    
+    def place(self, where, _rot):
+        return WinWall(where)
+
 
 class EditorLevelPreview(GameObj):
     def __repr__(self):
@@ -913,7 +958,11 @@ class EditorLevelManager(GameObj):
         super().__init__()
         self.always_think = True
 
-        self.items = [TileItem(), SpikeItem(), JumpOrbItem(), GravityOrbItem(), JumpPadItem()]
+        self.items = [
+            TileItem(), SpikeItem(), JumpOrbItem(), 
+            GravityOrbItem(), JumpPadItem(), GravityPadItem(), 
+            WinWallItem()
+        ]
         self.held_item_index = 0
 
         self.held_item = TileItem()
@@ -973,7 +1022,9 @@ class EditorLevelManager(GameObj):
                 objs.append(i)
             self.saved = objs
 
+            print("SAVED LEVEL CODE: -=-=-=-=-=")
             print(self.saved)
+            print("LEVEL CODE ^^^^^^^-=-=-=-=-=")
             test_level = Level("Preview Level", self.get_saved)
             get_game().defer(lambda: get_game().set_level(test_level))
 
@@ -994,6 +1045,12 @@ class EditorLevelManager(GameObj):
             
             if is_key_pressed(KeyboardKey(0).KEY_R):
                 self.rotation += 45
+            
+            if is_key_pressed(KeyboardKey(0).KEY_P):
+                for i in get_game().game_objects[:]:
+                    if type(i) == WinWall:
+                        get_game().game_objects.remove(i)
+                        break
     
     def draw(self):
         cam = get_game().get_cam()
