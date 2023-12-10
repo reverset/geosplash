@@ -6,7 +6,6 @@ Created on Tue Nov 14 13:32:55 2023
 """
 
 from pyray import *
-from pprint import pprint
 
 import math
 import random
@@ -320,7 +319,7 @@ class Player(GameObj):
             self.wantJump = False
         
         if Input.reset_level():
-            get_game().defer(lambda: get_game().reload_level())
+            get_game().reload_level()
     
     def _update_velocity(self):
         self.velocity.y = clamp(self.velocity.y, -20, 20)
@@ -379,7 +378,9 @@ class Ground(GameObj):
     
     def logic(self):
         if self.player is not None:
-            if self.player.orientation == 1:
+            if not self.player.dead and self.player.position.y <= -10_000:
+                self.player.kill()
+            if self.player.orientation == 1 and self.player.position.y:
                 self.player.grounded_y = self.position.y
             else:
                 self.player.grounded_y = Ground.REVERSE_ALTITUDE
@@ -802,11 +803,17 @@ class Item:
     def __init__(self, name):
         self.name = name
 
+    def supports_rotation(self):
+        return False
+
     def draw_preview(self, where):
         pass
     
     def offset(self, where):
         return VecMath.floor_i(where)
+
+    def origin(self, where):
+        return Vector2(0, 0)
 
     def place(self, where):
         pass
@@ -839,6 +846,12 @@ class SpikeItem(Item):
         w.y += Spike.MID
         return w
 
+    def supports_rotation(self):
+        return True
+
+    def origin(self, where):
+        return Vector2(where.x, where.y - Spike.MID)
+
     def draw_preview(self, where):
         top = VecMath.sub(where, Vector2(0, Spike.HEIGHT))
         left = VecMath.add(top, Vector2(-Spike.MID, Spike.HEIGHT))
@@ -852,7 +865,7 @@ class SpikeItem(Item):
         )
     
     def place(self, where, rot):
-        return Spike( where.to_raylib(), rot)
+        return Spike( where, rot)
 
 class JumpOrbItem(Item):
     def __init__(self):
@@ -1034,7 +1047,7 @@ class EditorLevelManager(GameObj):
                 block = self.held_item.place(actual, self.rotation)
                 get_game().make([block])
             
-            if is_mouse_button_pressed(1):
+            if is_mouse_button_down(1):
                 for i in get_game().game_objects:
                     if i.position.x == actual.x and i.position.y == actual.y:
                         get_game().game_objects.remove(i)
@@ -1048,6 +1061,9 @@ class EditorLevelManager(GameObj):
                     if type(i) == WinWall:
                         get_game().game_objects.remove(i)
                         break
+            if is_key_pressed(KeyboardKey(0).KEY_B):
+                global DEBUG_MODE
+                DEBUG_MODE = not DEBUG_MODE
     
     def draw(self):
         cam = get_game().get_cam()
@@ -1060,7 +1076,8 @@ class EditorLevelManager(GameObj):
             actual = self.held_item.offset(pos)
             actual.y -= 5 # so it aligns with the ground
 
-            get_game().calc_rot(self.rotation, actual)
+            if self.held_item.supports_rotation():
+                get_game().calc_rot(self.rotation, self.held_item.origin(actual))
             self.held_item.draw_preview(actual)
             get_game().reset_rot()
 
@@ -1072,9 +1089,14 @@ class EditorLevel(Level):
         else:
             def get():
                 retrived = level_get()
+                manager_exists = False
                 for i in retrived[:]:
                     if type(i) == Player or type(i) == Ground:
                         retrived.remove(i)
+                    if type(i) == EditorLevelManager:
+                        manager_exists = True
+                if manager_exists:
+                    return [Ground()] + retrived
                 return EditorLevel.level_data() + retrived
             super().__init__("Editor", get)
     
@@ -1177,7 +1199,7 @@ def main():
     global win_inited
     
     game = Game()
-    game.set_level(EditorLevel(HardLevel.level_data)) # SET LEVEL
+    game.set_level(EditorLevel()) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
