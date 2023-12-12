@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Tue Nov 14 13:32:55 2023
@@ -187,6 +188,9 @@ class Game:
         self.reset()
         self.level = lvl
         self.make(lvl.get())
+        if self.get_player() is not None:
+            if self.get_player().orientation == -1:
+                self.get_player().flip_gravity()
     
     def reload_level(self):
         assert self.level != None, "Attempted to reload level that is not loaded to begin with."
@@ -274,8 +278,9 @@ class Player(GameObj):
             self.orientation = 1
             self.grounded_y = Ground.ALTITUDE
     
-    def kill(self):
+    def kill(self, reason):
         if self.halted: return
+        print("Killed by " + reason)
 
         self.dead = True
         self.area = None
@@ -379,8 +384,8 @@ class Ground(GameObj):
     def logic(self):
         if self.player is not None:
             if not self.player.dead and self.player.position.y <= -10_000:
-                self.player.kill()
-            if self.player.orientation == 1 and self.player.position.y:
+               self.player.kill("excessive height")
+            if self.player.orientation == 1:
                 self.player.grounded_y = self.position.y
             else:
                 self.player.grounded_y = Ground.REVERSE_ALTITUDE
@@ -415,7 +420,7 @@ class Spike(GameObj):
         self.origin = Vector2(self.position.x, self.position.y - Player.HEIGHT * 0.5)
         self.rotation = rotation
         self.area = Rectangle(
-            VecMath.sub(self.position, Vector2(5, 30)), 
+            VecMath.sub(self.position, Vector2(5, 30)),
             Vector2(10, 30)
         )
         self.player = None
@@ -432,7 +437,7 @@ class Spike(GameObj):
 
         for vert in self.area.vertices():
             if Rectangle.check_collision_with_point(player_area, vert):
-                self.player.kill()
+                self.player.kill("Spike")
     
     def draw(self):
         #draw_triangle(
@@ -500,13 +505,13 @@ class Tile(GameObj):
                     if i.y < self.position.y + ground_threshold:
                         self.player.grounded_y = self.area.position.y + bump
                     else:
-                        self.player.kill()
+                        self.player.kill("side of Tile")
                 else:
                     bump = self.area.dimension.y
                     if i.y > (self.position.y + bump) + (ground_threshold * -1):
                         self.player.grounded_y = self.area.position.y + bump
                     else: # hit side of tile
-                        self.player.kill()
+                        self.player.kill("side of Tile")
                 
     
     def draw(self):
@@ -969,8 +974,8 @@ class EditorLevelManager(GameObj):
         self.always_think = True
 
         self.items = [
-            TileItem(), SpikeItem(), JumpOrbItem(), 
-            GravityOrbItem(), JumpPadItem(), GravityPadItem(), 
+            TileItem(), SpikeItem(), JumpOrbItem(),
+            GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             WinWallItem()
         ]
         self.held_item_index = 0
@@ -1199,7 +1204,7 @@ def main():
     global win_inited
     
     game = Game()
-    game.set_level(EditorLevel()) # SET LEVEL
+    game.set_level(EditorLevel(HardLevel.level_data)) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
