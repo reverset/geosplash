@@ -235,6 +235,18 @@ class Level:
     def get(self):
         return self.func()
 
+_attempts = 0
+class AttemptCounter(GameObj):
+    def __init__(self, position):
+        super().__init__()
+        self.position = position
+    
+    def draw(self):
+        global _attempts
+        
+        p = VecMath.floor_i(self.position)
+        draw_text("Attempt #" + repr(_attempts), p.x, p.y, 48, BLACK)
+
 class Player(GameObj):
     WIDTH = 50
     HEIGHT = 50
@@ -265,6 +277,9 @@ class Player(GameObj):
         self.orientation = 1
 
         self.halted = False
+    
+    def manifested(self):
+        get_game().make([AttemptCounter(clone_vec(self.position))])
 
     def halt(self):
         self.halted = True
@@ -280,6 +295,8 @@ class Player(GameObj):
     
     def kill(self, reason):
         if self.halted: return
+        global _attempts
+        _attempts += 1
         print("Killed by " + reason)
 
         self.dead = True
@@ -326,6 +343,39 @@ class Player(GameObj):
         if Input.reset_level():
             get_game().reload_level()
     
+    @staticmethod
+    def _closer(n, options):
+        closest = None
+        close_value = sys.maxsize
+        for i in options:
+            if abs(n - i) < close_value:
+                closest = i
+                close_value = i - n
+        return closest
+    
+    def _handle_rotation(self):
+        # if not self.grounded:
+        #     self.rotation -= Player.ROTATE_SPEED * self.orientation
+        #     if self.rotation > 360:
+        #         self.rotation = 0
+        #     elif self.rotation < -360:
+        #         self.rotation = 0
+        # else:
+        #     close = self._closer(self.rotation, [0, 90, 180, 360, -90, -180, -360])
+        #     #print("close =", close, ", rot =", self.rotation)
+        #     STEP = 20
+        #     if abs(close - self.rotation) < STEP:
+        #         self.rotation = close
+        #     elif close > self.rotation:
+        #         self.rotation += STEP
+        #     elif close < self.rotation:
+        #         self.rotation -= STEP
+        if not self.grounded: # TODO: smoother snap
+            self.rotation -= Player.ROTATE_SPEED * self.orientation
+        else:
+            self.rotation = 0
+                
+    
     def _update_velocity(self):
         self.velocity.y = clamp(self.velocity.y, -20, 20)
         self.position = VecMath.add(self.position, self.velocity)
@@ -348,10 +398,7 @@ class Player(GameObj):
             else:
                 self.grounded = False
         
-        if not self.grounded:
-            self.rotation -= Player.ROTATE_SPEED * self.orientation
-        else:
-            self.rotation = 0
+        self._handle_rotation()
         
     
     def draw(self):
@@ -438,6 +485,7 @@ class Spike(GameObj):
         for vert in self.area.vertices():
             if Rectangle.check_collision_with_point(player_area, vert):
                 self.player.kill("Spike")
+                break
     
     def draw(self):
         #draw_triangle(
@@ -804,6 +852,40 @@ class WinWall(GameObj):
         p = VecMath.floor_i(self.position)
         draw_rectangle(p.x, WinWall.Y_POS, WinWall.WIDTH, WinWall.HEIGHT, WinWall.COLOR)
 
+class PlayerSpawn(GameObj):
+    RADIUS = 15
+
+    def clone(self):
+        return PlayerSpawn(clone_vec(self.position))
+
+    def __init__(self, pos):
+        super().__init__()
+        self.position = pos
+        self.waiting = True
+        self.player = None
+    
+    def destroy(self):
+        get_game().defer(lambda: get_game().destroy([self]))
+
+    def check(self):
+        self.player = get_game().get_player()
+        if self.player is not None:
+            self.waiting = False
+            self.player.position = clone_vec(self.position)
+            self.destroy()
+
+    def manifested(self):
+        self.check()
+    
+    def logic(self):
+        if not self.waiting: return
+
+        self.check()
+    
+    def draw(self):
+        p = VecMath.floor_i(self.position)
+        draw_circle(p.x, p.y, PlayerSpawn.RADIUS, GRAY)
+
 class Item:
     def __init__(self, name):
         self.name = name
@@ -822,6 +904,16 @@ class Item:
 
     def place(self, where):
         pass
+
+class PlayerSpawnItem(Item):
+    def __init__(self):
+        super().__init__("PlayerSpawn")
+    
+    def draw_preview(self, where):
+        draw_circle(where.x, where.y, PlayerSpawn.RADIUS, GRAY)
+    
+    def place(self, where, _rot):
+        return PlayerSpawn(where)
 
 class TileItem(Item):
     WIDTH = 50
@@ -974,13 +1066,13 @@ class EditorLevelManager(GameObj):
         self.always_think = True
 
         self.items = [
-            TileItem(), SpikeItem(), JumpOrbItem(),
+            PlayerSpawnItem(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             WinWallItem()
         ]
         self.held_item_index = 0
 
-        self.held_item = TileItem()
+        self.held_item = self.items[self.held_item_index]
         self.rotation = 0
 
         self.saved = []
@@ -1066,9 +1158,19 @@ class EditorLevelManager(GameObj):
                     if type(i) == WinWall:
                         get_game().game_objects.remove(i)
                         break
+
             if is_key_pressed(KeyboardKey(0).KEY_B):
                 global DEBUG_MODE
                 DEBUG_MODE = not DEBUG_MODE
+            
+            if is_key_pressed(KeyboardKey(0).KEY_K):
+                removed = 0
+                for i in get_game().game_objects[:]:
+                    if type(i) == PlayerSpawn:
+                        get_game().game_objects.remove(i)
+                        removed += 1
+                print(f"Removed {removed} spawnpoints")
+                
     
     def draw(self):
         cam = get_game().get_cam()
@@ -1283,6 +1385,3 @@ if __name__ == "__main__":
         sys.stderr.write("EXCEPTION HAS OCCURRED\n")
         raise e
     
-
-
-
