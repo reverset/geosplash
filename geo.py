@@ -951,30 +951,28 @@ class PlayerSpawn(GameObj):
         p = VecMath.floor_i(self.position)
         draw_circle(p.x, p.y, PlayerSpawn.RADIUS, GRAY)
 
-class ShipPortal(GameObj):
+class Portal(GameObj):
     WIDTH = 10
     HEIGHT = 100
 
-    def clone(self):
-        return ShipPortal(clone_vec(self.position))
-
     def __repr__(self):
-        return f"ShipPortal(Vector2({self.position.x}, {self.position.y}))"
-
+        return f"{self.__class__.__name__}(Vector2({self.position.x}, {self.position.y}))"
+    
+    def clone(self):
+        return type(self)(clone_vec(self.position))
+    
     def __init__(self, pos):
         super().__init__()
+
         self.position = pos
         self.area = Rectangle(
             clone_vec(self.position),
-            Vector2(ShipPortal.WIDTH, ShipPortal.HEIGHT)
+            Vector2(Portal.WIDTH, Portal.HEIGHT)
         )
+        self.color = BLACK
 
         self.player = None
         self.enabled = True
-    
-    def draw(self):
-        p = VecMath.floor_i(self.position)
-        draw_rectangle(p.x, p.y, ShipPortal.WIDTH, ShipPortal.HEIGHT, PURPLE)
     
     def manifested(self):
         self.player = get_game().get_player()
@@ -986,9 +984,37 @@ class ShipPortal(GameObj):
 
         for i in self.player.area.vertices():
             if Rectangle.check_collision_with_point(self.area, i):
-                self.player.set_mode("ship")
+                self.apply()
                 self.enabled = False
                 break
+    
+    def draw(self):
+        p = VecMath.floor_i(self.position)
+        draw_rectangle(p.x, p.y, Portal.WIDTH, Portal.HEIGHT, self.color)
+
+    def apply(self):
+        pass
+
+    
+
+class ShipPortal(Portal):
+    COLOR = PURPLE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.color = ShipPortal.COLOR
+
+    def apply(self):
+        self.player.set_mode("ship")
+class SquarePortal(Portal):
+    COLOR = ORANGE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.color = SquarePortal.COLOR
+    
+    def apply(self):
+        self.player.set_mode("square")
 
 class Item:
     def __init__(self, name):
@@ -1130,7 +1156,19 @@ class ShipPortalItem(Item):
         return ShipPortal(where)
     
     def draw_preview(self, where):
-        draw_rectangle(where.x, where.y, ShipPortal.WIDTH, ShipPortal.HEIGHT, PURPLE)
+        draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, ShipPortal.COLOR)
+
+class SquarePortalItem(Item):
+    def __init__(self):
+        super().__init__("SquarePortal")
+    
+    def place(self, where, _rot):
+        return SquarePortal(where)
+    
+    def draw_preview(self, where):
+        draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, SquarePortal.COLOR)
+
+
 
 class WinWallItem(Item):
     def __init__(self):
@@ -1182,7 +1220,7 @@ class EditorLevelManager(GameObj):
         self.items = [
             PlayerSpawnItem(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            ShipPortalItem(), WinWallItem()
+            ShipPortalItem(), SquarePortalItem(), WinWallItem()
         ]
         self.held_item_index = 0
 
