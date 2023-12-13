@@ -338,6 +338,13 @@ class Player(GameObj):
         self.origin = Vector2( self.position.x + (Player.WIDTH * 0.5), self.position.y + (Player.HEIGHT * 0.5) )
         super().predraw()
     
+    def postdraw(self):
+        super().postdraw()
+        if DEBUG_MODE and self.area is not None:
+            p = VecMath.floor_i(self.area.position)
+            d = VecMath.floor_i(self.area.dimension)
+            draw_rectangle_lines(p.x, p.y, d.x+1, d.y+1, RED)
+    
     def square_logic(self):
         self._fall(Player.GRAVITY)
         self._square_handle_rotation()
@@ -451,11 +458,6 @@ class Player(GameObj):
         if self.dead: return
         self.modes[self.current_mode][1]()
 
-        if DEBUG_MODE:
-            p = VecMath.floor_i(self.area.position)
-            d = VecMath.floor_i(self.area.dimension)
-            draw_rectangle_lines(p.x, p.y, d.x+1, d.y+1, RED)
-
 class Ground(GameObj):
     ALTITUDE = 300
     REVERSE_ALTITUDE = -10_000
@@ -556,7 +558,10 @@ class Spike(GameObj):
             right,
             RED
         )
-        
+    
+    def postdraw(self):
+        super().postdraw()
+
         # collision shape DEBUGGING
         if DEBUG_MODE:
             pos = VecMath.floor_i(self.area.position)
@@ -589,27 +594,34 @@ class Tile(GameObj):
             return
         
         bump = 0
+        verts = self.player.area.vertices()
         if self.player.orientation == 1:
-            verts = self.player.area.vertices()[2:4]
+            rel_verts = verts[2:4]
         else:
-            verts = self.player.area.vertices()[:2]
+            rel_verts = verts[:2]
 
         for i in verts:
             touching = self.area.check_collision_with_point(i)
             ground_threshold = 25
             
             if touching:
+                if i not in rel_verts:
+                    self.player.kill("bonked on Tile")
+                    break
                 if self.player.orientation == 1:
                     if i.y < self.position.y + ground_threshold:
                         self.player.grounded_y = self.area.position.y + bump
+                        break
                     else:
                         self.player.kill("side of Tile")
+                        break
                 else:
                     bump = self.area.dimension.y
                     if i.y > (self.position.y + bump) + (ground_threshold * -1):
                         self.player.grounded_y = self.area.position.y + bump
                     else: # hit side of tile
                         self.player.kill("side of Tile")
+                        break
                 
     
     def draw(self):
