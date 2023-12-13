@@ -250,6 +250,13 @@ class AttemptCounter(GameObj):
 class Player(GameObj):
     WIDTH = 50
     HEIGHT = 50
+    GRAVITY = 1
+
+    SHIP_WIDTH = 40
+    SHIP_HEIGHT = 20
+    SHIP_CLIMB_SPEED = 0.7
+    SHIP_GRAVITY = 0.3
+
 
     ROTATE_SPEED = 7
 
@@ -259,8 +266,22 @@ class Player(GameObj):
     def clone(self):
         return Player(clone_vec(self.start_pos))
     
+    def set_mode(self, mode):
+        if mode not in self.modes:
+            raise RuntimeError(f"Attempted to switch to mode '{mode}', which does not exist")
+        self.current_mode = mode
+        self.rotation = 0
+
     def __init__(self, start_pos = Vector2(-400, 0)):
         super().__init__()
+
+        self.modes = {
+            "square": (self.square_logic, self.square_draw),
+            "ship": (self.ship_logic, self.ship_draw)
+        }
+
+        self.current_mode = "square"
+
         self.start_pos = clone_vec(start_pos)
         self.position = start_pos
         self.dead = False
@@ -309,7 +330,7 @@ class Player(GameObj):
         timer = TimerObj(1, lambda: get_game().reload_level())
         get_game().make([timer])
         timer.start()
-        
+
     def get_tag(self):
         return "Player"
     
@@ -317,6 +338,25 @@ class Player(GameObj):
         self.origin = Vector2( self.position.x + (Player.WIDTH * 0.5), self.position.y + (Player.HEIGHT * 0.5) )
         super().predraw()
     
+    def square_logic(self):
+        self._fall(Player.GRAVITY)
+        self._square_handle_rotation()
+
+        if self.wantJump and self.grounded:
+            self.position.y -= 5 * self.orientation
+            self.grounded = False
+            self.velocity.y = -15 * self.orientation
+
+    def ship_logic(self):
+        self._fall(Player.SHIP_GRAVITY)
+        self._ship_handle_rotation()
+
+        if self.wantJump:
+            self.velocity.y -= Player.SHIP_CLIMB_SPEED * self.orientation
+
+            if self.grounded:
+                self.grounded = False
+
     def logic(self):
         if self.dead: return
         if self.halted: return
@@ -324,14 +364,10 @@ class Player(GameObj):
         self.velocity.x = 5.5 # horizontal speed
         self._act_on_input()
         
-        self._fall()
-        if self.wantJump and self.grounded:
-            self.position.y -= 5 * self.orientation
-            self.grounded = False
-            self.velocity.y = -15 * self.orientation
+        self.modes[self.current_mode][0]()
         
         self._update_velocity()
-        self.area.position = self.position
+        self.area.position = self.position # ensure that hitbox is adjusted to the visible position, can NOT clone the vector here because of timing & pointers 
         
         
     def _act_on_input(self):
@@ -353,7 +389,7 @@ class Player(GameObj):
                 close_value = i - n
         return closest
     
-    def _handle_rotation(self):
+    def _square_handle_rotation(self):
         # if not self.grounded:
         #     self.rotation -= Player.ROTATE_SPEED * self.orientation
         #     if self.rotation > 360:
@@ -374,14 +410,16 @@ class Player(GameObj):
             self.rotation -= Player.ROTATE_SPEED * self.orientation
         else:
             self.rotation = 0
-                
+    
+    def _ship_handle_rotation(self):
+        self.rotation = -self.velocity.y * 3
     
     def _update_velocity(self):
         self.velocity.y = clamp(self.velocity.y, -20, 20)
         self.position = VecMath.add(self.position, self.velocity)
         
-    def _fall(self):
-        self.velocity.y += 1 * self.orientation
+    def _fall(self, gravity):
+        self.velocity.y += gravity * self.orientation
         
         if self.orientation == 1:
             if self.position.y + Player.HEIGHT >= self.grounded_y:
@@ -398,13 +436,25 @@ class Player(GameObj):
             else:
                 self.grounded = False
         
-        self._handle_rotation()
-        
-    
-    def draw(self):
-        if self.dead: return
+    def square_draw(self):
         pos = VecMath.floor_i(self.position)
         draw_rectangle(pos.x, pos.y, Player.WIDTH, Player.HEIGHT, BLUE)
+    
+    def ship_draw(self):
+        pos = VecMath.floor_i(self.position)
+        pos.x += Player.WIDTH//2
+        pos.y += Player.HEIGHT//2
+
+        draw_ellipse(pos.x, pos.y, Player.SHIP_WIDTH, Player.SHIP_HEIGHT, BLUE)
+
+    def draw(self):
+        if self.dead: return
+        self.modes[self.current_mode][1]()
+
+        if DEBUG_MODE:
+            p = VecMath.floor_i(self.area.position)
+            d = VecMath.floor_i(self.area.dimension)
+            draw_rectangle_lines(p.x, p.y, d.x+1, d.y+1, RED)
 
 class Ground(GameObj):
     ALTITUDE = 300
@@ -886,6 +936,41 @@ class PlayerSpawn(GameObj):
         p = VecMath.floor_i(self.position)
         draw_circle(p.x, p.y, PlayerSpawn.RADIUS, GRAY)
 
+class ShipPortal(GameObj):
+    WIDTH = 10
+    HEIGHT = 100
+
+    def clone(self):
+        return ShipPortal(clone_vec(self.position))
+
+    def __init__(self, pos):
+        super().__init__()
+        self.position = pos
+        self.area = Rectangle(
+            clone_vec(self.position),
+            Vector2(ShipPortal.WIDTH, ShipPortal.HEIGHT)
+        )
+
+        self.player = None
+        self.enabled = True
+    
+    def draw(self):
+        p = VecMath.floor_i(self.position)
+        draw_rectangle(p.x, p.y, ShipPortal.WIDTH, ShipPortal.HEIGHT, PURPLE)
+    
+    def manifested(self):
+        self.player = get_game().get_player()
+
+    def logic(self):
+        if self.player is None: return
+        if not self.enabled: return
+
+        for i in self.player.area.vertices():
+            if Rectangle.check_collision_with_point(self.area, i):
+                self.player.set_mode("ship")
+                self.enabled = False
+                break
+
 class Item:
     def __init__(self, name):
         self.name = name
@@ -1018,6 +1103,16 @@ class GravityPadItem(Item):
     def place(self, where, _rot):
         return GravityPad(where)
 
+class ShipPortalItem(Item):
+    def __init__(self):
+        super().__init__("ShipPortal")
+    
+    def place(self, where, _rot):
+        return ShipPortal(where)
+    
+    def draw_preview(self, where):
+        draw_rectangle(where.x, where.y, ShipPortal.WIDTH, ShipPortal.HEIGHT, PURPLE)
+
 class WinWallItem(Item):
     def __init__(self):
         super().__init__("WinWall")
@@ -1068,7 +1163,7 @@ class EditorLevelManager(GameObj):
         self.items = [
             PlayerSpawnItem(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            WinWallItem()
+            ShipPortalItem(), WinWallItem()
         ]
         self.held_item_index = 0
 
@@ -1306,7 +1401,7 @@ def main():
     global win_inited
     
     game = Game()
-    game.set_level(EditorLevel(HardLevel.level_data)) # SET LEVEL
+    game.set_level(EditorLevel()) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
