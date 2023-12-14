@@ -1076,6 +1076,7 @@ class SmartTile(Item):
     def special_trigger(self):
         if self.pos1 is None:
             self.pos1 = EditorLevelManager.get_desired_mouse_pos()
+            self.pos1 = self.offset(self.pos1)
         elif self.pos2 is None:
             self.pos2 = EditorLevelManager.get_desired_mouse_pos()
         else:
@@ -1096,7 +1097,7 @@ class SmartTile(Item):
 
     def draw_preview(self, where):
         if self.pos1 is None and self.pos2 is None:
-            draw_rectangle(where.x, where.y, 20, 20, GOLD)
+            draw_rectangle(where.x, where.y+5, 10, 10, GOLD)
 
         elif self.pos1 is not None and self.pos2 is None:
             temppos1 = clone_vec(self.pos1)
@@ -1106,6 +1107,9 @@ class SmartTile(Item):
                 temppos1.x, temppos2.x = temppos2.x, temppos1.x
             if temppos1.y > temppos2.y:
                 temppos1.y, temppos2.y = temppos2.y, temppos1.y
+            
+            mouse = VecMath.floor_i(get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()))
+            draw_text(f"{tempdim.x}x{tempdim.y}", mouse.x+20, mouse.y, 24, BLACK)
 
 
             draw_rectangle_lines(int(temppos1.x), int(temppos1.y), int(tempdim.x), int(tempdim.y), GREEN)
@@ -1291,7 +1295,7 @@ class EditorLevelManager(GameObj):
         self.always_think = True
 
         self.items = [
-            PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
+            None, PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             ShipPortalItem(), SquarePortalItem(), WinWallItem()
         ]
@@ -1337,7 +1341,6 @@ class EditorLevelManager(GameObj):
 
     @staticmethod
     def get_desired_mouse_pos():
-        cam = get_game().get_cam()
         # pos = VecMath.sub(get_mouse_position(), VecMath.sub(cam.offset, cam.target))
         pos = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
         pos.x = round(pos.x, EditorLevelManager.ROUND_WIDTH)
@@ -1599,6 +1602,11 @@ def main():
         "ship": ShipLevel(), 
         "radio anger": RadioAngerLevel()
     }
+
+    print("Available levels:")
+    for i in levels.keys():
+        print(f"=> {i}")
+    print("You may type 'exit' to exit.")
 
     looping = True
     while looping:
