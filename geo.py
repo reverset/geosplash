@@ -1310,6 +1310,32 @@ class EditorLevelManager(GameObj):
                     if type(i) == WinWall:
                         get_game().game_objects.remove(i)
                         break
+            
+            if is_key_pressed(KeyboardKey(0).KEY_C):
+                print("Saving level to clipboard ...")
+                self.save_objs()
+                saved = self.get_saved()
+                set_clipboard_text(repr(saved))
+                print(f"Saved level to clipboard! ({len(saved)} objects)")
+            
+            if is_key_pressed(KeyboardKey(0).KEY_L):
+                print("Loading level from clipboard ...")
+                clip = get_clipboard_text()
+                objs = None
+                try:
+                    objs = eval(clip)
+                except:
+                    print("Invalid level data! Please ensure you copied the right stuff")
+                else:
+                    for i in objs[:]:
+                        if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
+                            objs.remove(i)
+                    objs.insert(0, EditorLevelManager())
+
+                    def level_data():
+                        return objs
+                    l = Level("Saved Level", level_data)
+                    get_game().defer(lambda: get_game().set_level(l))
 
             if is_key_pressed(KeyboardKey(0).KEY_B):
                 global DEBUG_MODE
@@ -1471,6 +1497,7 @@ def main():
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
     set_target_fps(60)
+    set_exit_key(-1)
     
     cam = Camera2D(Vector2(screen_mid[0], screen_mid[1]), Vector2(0, 0), 0, 1)
     game.camera = cam
@@ -1534,14 +1561,18 @@ def main():
         last_frame = get_time()
     
     close_window()
+    win_inited = False
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        import traceback 
         if win_inited:
             close_window()
         
         sys.stderr.write("EXCEPTION HAS OCCURRED\n")
-        raise e
+        traceback.print_exc()
+
+        input("Press enter to conclude program.")
     
