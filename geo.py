@@ -236,6 +236,20 @@ class Level:
         self.name = name
         self.func = func
     
+    @staticmethod
+    def from_file(file):
+        print("Loading level from file ...")
+        with open(file, "r") as f:
+            lines = f.readlines()
+            
+            name = lines[0]
+            code = lines[1]
+
+            code = eval(code)
+            def level_data():
+                return code
+            return Level(name, level_data)
+
     def get(self):
         return self.func()
 
@@ -817,6 +831,7 @@ class Pad(GameObj):
             if Rectangle.check_collision_with_point(self.player.area, i):
                 self.already_touched = True
                 self.activate()
+                break
             
     def activate(self):
         pass
@@ -1060,28 +1075,32 @@ class SmartTile(Item):
 
     def special_trigger(self):
         if self.pos1 is None:
-            self.pos1 = self.offset(get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()))
+            self.pos1 = EditorLevelManager.get_desired_mouse_pos()
         elif self.pos2 is None:
-            self.pos2 = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            self.pos2 = EditorLevelManager.get_desired_mouse_pos()
         else:
             self.pos1 = None
             self.pos2 = None
     
     def offset(self, where):
-        return TileItem().offset(where)
+        w = super().offset(where)
+        w.x -= 10
+        w.y -= 10
+        return w
 
     def place(self, where, _rot):
+        if self.pos1 is None or self.pos2 is None: return None
         t = Tile(clone_vec(self.pos1), clone_vec(self.dim))
         self.pos1, self.pos2, self.dim = None, None, None
         return t
 
     def draw_preview(self, where):
         if self.pos1 is None and self.pos2 is None:
-            draw_rectangle(where.x, where.y, TileItem.WIDTH, TileItem.HEIGHT, GOLD)
+            draw_rectangle(where.x, where.y, 20, 20, GOLD)
 
         elif self.pos1 is not None and self.pos2 is None:
             temppos1 = clone_vec(self.pos1)
-            temppos2 = clone_vec(get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()))
+            temppos2 = EditorLevelManager.get_desired_mouse_pos()
             tempdim = VecMath.abs(VecMath.sub(temppos2, self.pos1))
             if temppos1.x > temppos2.x:
                 temppos1.x, temppos2.x = temppos2.x, temppos1.x
@@ -1319,7 +1338,8 @@ class EditorLevelManager(GameObj):
     @staticmethod
     def get_desired_mouse_pos():
         cam = get_game().get_cam()
-        pos = VecMath.sub(get_mouse_position(), VecMath.sub(cam.offset, cam.target))
+        # pos = VecMath.sub(get_mouse_position(), VecMath.sub(cam.offset, cam.target))
+        pos = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
         pos.x = round(pos.x, EditorLevelManager.ROUND_WIDTH)
         pos.y = round(pos.y, EditorLevelManager.ROUND_WIDTH)
         return pos
@@ -1348,7 +1368,10 @@ class EditorLevelManager(GameObj):
 
             if is_mouse_button_pressed(0):
                 block = self.held_item.place(actual, self.rotation)
-                get_game().make([block])
+                if block is None:
+                    sys.stderr.write("Attempted to place nothing (None).\n")
+                else:
+                    get_game().make([block])
             
             if is_mouse_button_down(1):
                 destroyed = False
@@ -1393,7 +1416,7 @@ class EditorLevelManager(GameObj):
                 try:
                     objs = eval(clip)
                 except:
-                    print("Invalid level data! Please ensure you copied the right stuff")
+                    sys.stderr.write("Invalid level data! Please ensure you copied the right stuff\n")
                 else:
                     for i in objs[:]:
                         if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
@@ -1402,8 +1425,9 @@ class EditorLevelManager(GameObj):
 
                     def level_data():
                         return objs
-                    l = Level("Saved Level", level_data)
+                    l = Level("Loaded Level", level_data)
                     get_game().defer(lambda: get_game().set_level(l))
+                    print("Loaded level!")
 
             if is_key_pressed(KeyboardKey(0).KEY_B):
                 global DEBUG_MODE
@@ -1422,7 +1446,9 @@ class EditorLevelManager(GameObj):
         cam = get_game().get_cam()
         cam_pos = VecMath.floor_i(cam.target)
         cam_off = VecMath.floor_i(cam.offset)
+
         draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x, cam_pos.y - cam_off.y, 54, BLACK )
+        draw_fps(cam_pos.x + cam_off.x - 100, cam_pos.y - cam_off.y + 20)
 
         if self.held_item is not None:
             pos = EditorLevelManager.get_desired_mouse_pos()
@@ -1544,8 +1570,8 @@ class HardLevel(Level):
     
     @staticmethod
     def level_data():
-        return [Player(Vector2(-400.0, 0.0)), Ground(), GravityPad(Vector2(-365, 120)), GravityPad(Vector2(-315, 120)), GravityPad(Vector2(-275, -20)), GravityPad(Vector2(-225, -20)), Spike(Vector2(-100.0, 300.0), 0), Tile(Vector2(75.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(100.0, 250.0), 0), Tile(Vector2(315.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(315.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(365.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(415.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(465.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(290.0, 300.0), 90), Spike(Vector2(290.0, 260.0), 90), Spike(Vector2(490.0, 200.0), 360), Spike(Vector2(530.0, 200.0), 360), Tile(Vector2(515.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(570.0, 200.0), 360), Tile(Vector2(615.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(665.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(715.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(740.0, 200.0), 360), Tile(Vector2(765.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(765.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(790.0, 150.0), 360), JumpOrb(Vector2(750, 125)), Tile(Vector2(815.0, 100.0), Vector2(50.0, 50.0)), Spike(Vector2(840.0, 100.0), 360), Tile(Vector2(815.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(815.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(815.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(865.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(890.0, 50.0), 360), Tile(Vector2(995.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(1020.0, 50.0), 360), Tile(Vector2(865.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1045.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1095.0, 150.0), Vector2(50.0, 50.0)), Spike(Vector2(1070.0, 100.0), 360), Spike(Vector2(1120.0, 150.0), 360), Tile(Vector2(1145.0, 200.0), Vector2(50.0, 50.0)), Spike(Vector2(1170.0, 200.0), 360), Tile(Vector2(1195.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1245.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 150.0), Vector2(50.0, 50.0)), Spike(Vector2(1370.0, 200.0), 1350), Spike(Vector2(1370.0, 150.0), 1350), Spike(Vector2(1370.0, 100.0), 1350), Spike(Vector2(1370.0, 50.0), 1350), Tile(Vector2(1295.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 50.0), Vector2(50.0, 50.0)), Tile(Vector2(1295.0, 0.0), Vector2(50.0, 50.0)), GravityPad(Vector2(1465, 290)), Tile(Vector2(1295.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1345.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1395.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1445.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1495.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1545.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1595.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1645.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1695.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1745.0, -50.0), Vector2(50.0, 50.0)), Spike(Vector2(1680.0, 50.0), 2340), Spike(Vector2(1710.0, 50.0), 2340), Spike(Vector2(1650.0, 50.0), 2340), Tile(Vector2(1795.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1845.0, -50.0), Vector2(50.0, 50.0)), Spike(Vector2(1880.0, 50.0), 2700), Tile(Vector2(1905.0, -20.0), Vector2(50.0, 50.0)), Spike(Vector2(1930.0, 80.0), 4140), Tile(Vector2(1905.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(1875.0, -50.0), Vector2(50.0, 50.0)), Tile(Vector2(2025.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2075.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2125.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2175.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2225.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2275.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2325.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2375.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2475.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2675.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2725.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2775.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2825.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2875.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2925.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(2975.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3025.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3075.0, -620.0), Vector2(50.0, 50.0)), Tile(Vector2(3125.0, -620.0), Vector2(50.0, 50.0))]
-
+        return Level.from_file("levels/hard.level").get()
+    
 class ShipLevel(Level):
     def __init__(self):
         super().__init__("ShipLevel", ShipLevel.level_data)
@@ -1553,14 +1579,44 @@ class ShipLevel(Level):
     @staticmethod
     def level_data():
         return [Ground(), Tile(Vector2(-475.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-425.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 250.0), Vector2(50.0, 50.0)), PlayerSpawn(Vector2(-420.0, 55.0)), Tile(Vector2(-285.0, 140.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 230.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 270.0), Vector2(50.0, 50.0)), Tile(Vector2(-85.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(-10.0, 330.0), 0), Spike(Vector2(20.0, 330.0), 0), Spike(Vector2(50.0, 330.0), 0), GravityPad(Vector2(85.0, 290.0)), GravityPad(Vector2(125.0, 100.0)), GravityPad(Vector2(145.0, 290.0)), GravityPad(Vector2(185.0, 100.0)), JumpPad(Vector2(265.0, 290.0)), Tile(Vector2(385.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(385.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(385.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -140.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -190.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -240.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -290.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -380.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -330.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -360.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 170.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(690.0, 250.0), 0), Spike(Vector2(740.0, 250.0), 0), Tile(Vector2(665.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(715.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(890.0, 220.0), 0), Spike(Vector2(890.0, 270.0), 180), Spike(Vector2(940.0, 270.0), 540), Spike(Vector2(940.0, 220.0), 720), JumpOrb(Vector2(820.0, 185.0)), JumpOrb(Vector2(1010.0, 195.0)), Tile(Vector2(1175.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -160.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -210.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -260.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -310.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -360.0), Vector2(50.0, 50.0)), ShipPortal(Vector2(1190.0, -15.0)), Tile(Vector2(1335.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1335.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1335.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -70.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -120.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -170.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -270.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -20.0), Vector2(50.0, 50.0)), Spike(Vector2(1560.0, 80.0), 1980), Spike(Vector2(1360.0, 150.0), 2160), Spike(Vector2(1780.0, 110.0), 2160), Tile(Vector2(1755.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -40.0), Vector2(50.0, 50.0)), Spike(Vector2(2010.0, 60.0), 2340), Spike(Vector2(2010.0, 190.0), 2520), Spike(Vector2(2060.0, 190.0), 2520), Spike(Vector2(2110.0, 190.0), 2520), Spike(Vector2(2160.0, 190.0), 2520), Spike(Vector2(2210.0, 190.0), 2520), Spike(Vector2(2060.0, 60.0), 2700), Spike(Vector2(2110.0, 60.0), 2700), Spike(Vector2(2160.0, 60.0), 2700), Tile(Vector2(2035.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2085.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2135.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2035.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2085.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2135.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 220.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -330.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(1225.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1275.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1325.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1365.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1415.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1455.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1495.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1585.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1635.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1685.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1735.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1785.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1835.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1885.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1935.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(2550.0, 0.0), 2880), Spike(Vector2(2600.0, 0.0), 2880), Spike(Vector2(2650.0, 0.0), 2880), Tile(Vector2(2475.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 0.0), Vector2(50.0, 50.0)), Spike(Vector2(2540.0, -120.0), 3060), Spike(Vector2(2580.0, -120.0), 3060), Spike(Vector2(2620.0, -120.0), 3060), Spike(Vector2(2660.0, -120.0), 3060), Tile(Vector2(2475.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2635.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -270.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 50.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(2850.0, 70.0), 3240), Spike(Vector2(2900.0, 70.0), 3240), Spike(Vector2(2850.0, 120.0), 3420), Spike(Vector2(2900.0, 120.0), 3420), Spike(Vector2(3050.0, -90.0), 3420), Spike(Vector2(3090.0, -90.0), 3420), Spike(Vector2(3050.0, -140.0), 3600), Spike(Vector2(3090.0, -140.0), 3600), WinWall(Vector2(3700.0, -5.0)), Spike(Vector2(1200.0, -60.0), 180), Tile(Vector2(385.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(335.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(285.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(235.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(185.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(135.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(85.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(35.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -160.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -210.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -260.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -310.0), Vector2(50.0, 50.0)), Spike(Vector2(100.0, -10.0), 180), Spike(Vector2(150.0, -10.0), 180), Spike(Vector2(200.0, -10.0), 180), Spike(Vector2(250.0, -10.0), 180), Spike(Vector2(300.0, -10.0), 180), Spike(Vector2(50.0, -10.0), 180), Spike(Vector2(350.0, -10.0), 180), Tile(Vector2(-15.0, -360.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 100.0), Vector2(50.0, 50.0))] 
+
+class RadioAngerLevel(Level):
+    def __init__(self):
+        super().__init__("Radio Anger", RadioAngerLevel.level_data)
     
+    @staticmethod
+    def level_data():
+        return Level.from_file("levels/radioanger.level").get()
+
 win_inited = False
 def main():
     global game
     global win_inited
 
+    levels = {
+        "test": TestLevel(), 
+        "hard": HardLevel(), 
+        "ship": ShipLevel(), 
+        "radio anger": RadioAngerLevel()
+    }
+
+    looping = True
+    while looping:
+        desired_level = input("Please type the level name you'd like to play: ")
+        if desired_level == "":
+            desired_level = levels["hard"]
+            looping = False
+        elif desired_level == "exit":
+            return
+        else:
+            try:
+                desired_level = levels[desired_level]
+                looping = False
+            except KeyError:
+                print("Invalid level name! Please try again.")
+
     game = Game()
-    game.set_level(EditorLevel(ShipLevel.level_data)) # SET LEVEL
+    game.set_level(EditorLevel(desired_level.level_data)) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
