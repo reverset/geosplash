@@ -77,6 +77,10 @@ class VecMath:
     def lerp(v1, v2, dt):
         return VecMath.mul(VecMath.add(v1, v2), Vector2(dt, dt))
 
+    @staticmethod
+    def abs(v1):
+        return Vector2(abs(v1.x), abs(v1.y))
+
 class Rectangle:
     def __init__(self, position, dimension):
         self.position = position
@@ -254,8 +258,8 @@ class Player(GameObj):
 
     SHIP_WIDTH = 40
     SHIP_HEIGHT = 20
-    SHIP_CLIMB_SPEED = 0.7
-    SHIP_GRAVITY = 0.3
+    SHIP_CLIMB_SPEED = 0.92
+    SHIP_GRAVITY = 0.4
 
 
     ROTATE_SPEED = 7
@@ -568,7 +572,6 @@ class Spike(GameObj):
             dim = VecMath.floor_i(self.area.dimension)
             
             draw_rectangle_lines(pos.x, pos.y, dim.x, dim.y, BLACK)
-
 class Tile(GameObj):
 
     def clone(self):
@@ -1029,6 +1032,9 @@ class Item:
     def offset(self, where):
         return VecMath.floor_i(where)
 
+    def special_trigger(self):
+        pass
+
     def origin(self, where):
         return Vector2(0, 0)
 
@@ -1044,6 +1050,55 @@ class PlayerSpawnItem(Item):
     
     def place(self, where, _rot):
         return PlayerSpawn(where)
+
+class SmartTile(Item):
+    def __init__(self):
+        super().__init__("SmartTile")
+        self.pos1 = None
+        self.pos2 = None
+        self.dim = None
+
+    def special_trigger(self):
+        if self.pos1 is None:
+            self.pos1 = self.offset(get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()))
+        elif self.pos2 is None:
+            self.pos2 = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+        else:
+            self.pos1 = None
+            self.pos2 = None
+    
+    def offset(self, where):
+        return TileItem().offset(where)
+
+    def place(self, where, _rot):
+        t = Tile(clone_vec(self.pos1), clone_vec(self.dim))
+        self.pos1, self.pos2, self.dim = None, None, None
+        return t
+
+    def draw_preview(self, where):
+        if self.pos1 is None and self.pos2 is None:
+            draw_rectangle(where.x, where.y, TileItem.WIDTH, TileItem.HEIGHT, GOLD)
+
+        elif self.pos1 is not None and self.pos2 is None:
+            temppos1 = clone_vec(self.pos1)
+            temppos2 = clone_vec(get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()))
+            tempdim = VecMath.abs(VecMath.sub(temppos2, self.pos1))
+            if temppos1.x > temppos2.x:
+                temppos1.x, temppos2.x = temppos2.x, temppos1.x
+            if temppos1.y > temppos2.y:
+                temppos1.y, temppos2.y = temppos2.y, temppos1.y
+
+
+            draw_rectangle_lines(int(temppos1.x), int(temppos1.y), int(tempdim.x), int(tempdim.y), GREEN)
+        else:
+            self.dim = VecMath.abs(VecMath.sub(self.pos2, self.pos1))
+            if self.pos1.x > self.pos2.x:
+                self.pos1.x, self.pos2.x = self.pos2.x, self.pos1.x
+            if self.pos1.y > self.pos2.y:
+                self.pos1.y, self.pos2.y = self.pos2.y, self.pos1.y
+
+
+            draw_rectangle(int(self.pos1.x), int(self.pos1.y), int(self.dim.x), int(self.dim.y), GREEN)
 
 class TileItem(Item):
     WIDTH = 50
@@ -1169,7 +1224,6 @@ class SquarePortalItem(Item):
         draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, SquarePortal.COLOR)
 
 
-
 class WinWallItem(Item):
     def __init__(self):
         super().__init__("WinWall")
@@ -1218,7 +1272,7 @@ class EditorLevelManager(GameObj):
         self.always_think = True
 
         self.items = [
-            PlayerSpawnItem(), TileItem(), SpikeItem(), JumpOrbItem(),
+            PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             ShipPortalItem(), SquarePortalItem(), WinWallItem()
         ]
@@ -1297,10 +1351,24 @@ class EditorLevelManager(GameObj):
                 get_game().make([block])
             
             if is_mouse_button_down(1):
+                destroyed = False
                 for i in get_game().game_objects:
                     if i.position.x == actual.x and i.position.y == actual.y:
                         get_game().game_objects.remove(i)
+                        destroyed = True
                         break
+
+                if not destroyed:
+                    point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+                    for i in get_game().game_objects:
+                        if i.area is None: continue
+
+                        if Rectangle.check_collision_with_point(i.area, point):
+                            get_game().game_objects.remove(i)
+                            break
+
+            if is_mouse_button_pressed(2):
+                self.held_item.special_trigger()
             
             if is_key_pressed(KeyboardKey(0).KEY_R):
                 self.rotation += 45
