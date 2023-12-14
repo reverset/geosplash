@@ -1490,7 +1490,7 @@ win_inited = False
 def main():
     global game
     global win_inited
-    
+
     game = Game()
     game.set_level(EditorLevel(ShipLevel.level_data)) # SET LEVEL
     
@@ -1501,10 +1501,13 @@ def main():
     
     cam = Camera2D(Vector2(screen_mid[0], screen_mid[1]), Vector2(0, 0), 0, 1)
     game.camera = cam
-    
+
     last_frame = get_time()
     delta = 1 / 60
     while not window_should_close() and not game.should_end:
+        if is_key_down(KeyboardKey(0).KEY_F11):
+            toggle_fullscreen()
+
         visible_threshold = 500
         visible = []
         for i in game.game_objects:
