@@ -1418,6 +1418,8 @@ class EditorLevelManager(GameObj):
             
             if is_key_pressed(KeyboardKey(0).KEY_R):
                 self.rotation += 45
+                if self.rotation > 315:
+                    self.rotation = 0
             
             if is_key_pressed(KeyboardKey(0).KEY_P):
                 for i in get_game().game_objects[:]:
