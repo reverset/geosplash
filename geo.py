@@ -635,16 +635,21 @@ class Tile(GameObj):
         verts = self.player.area.vertices()
         if self.player.orientation == 1:
             rel_verts = verts[2:4]
+            top_verts = verts[:2]
         else:
             rel_verts = verts[:2]
+            top_verts = verts[2:4]
 
         for i in verts:
             touching = self.area.check_collision_with_point(i)
             ground_threshold = 25
             
             if touching:
-                if i not in rel_verts:
-                    self.player.kill("bonked on Tile")
+                if i in top_verts:
+                    if self.player.current_mode == "ship":
+                        self.player.velocity.y = 0.7 * self.player.orientation
+                    else:
+                        self.player.kill("bonked on Tile")
                     break
                 if self.player.orientation == 1:
                     if i.y < self.position.y + ground_threshold:
