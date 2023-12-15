@@ -28,11 +28,11 @@ def clamp(val, mi, ma):
 class Input:
     @staticmethod
     def jump_pressed():
-        return is_key_pressed(KeyboardKey(0).KEY_SPACE) or is_key_pressed(KeyboardKey(0).KEY_UP) or is_mouse_button_pressed(0)
+        return is_key_pressed(KeyboardKey(0).KEY_SPACE) or is_key_pressed(KeyboardKey(0).KEY_UP) or is_mouse_button_pressed(0) or is_key_pressed(KeyboardKey(0).KEY_W)
     
     @staticmethod
     def jump_down():
-        return is_key_down(KeyboardKey(0).KEY_SPACE) or is_key_down(KeyboardKey(0).KEY_UP) or is_mouse_button_down(0)
+        return is_key_down(KeyboardKey(0).KEY_SPACE) or is_key_down(KeyboardKey(0).KEY_UP) or is_mouse_button_down(0) or is_key_down(KeyboardKey(0).KEY_W)
     
     @staticmethod
     def reset_level():
@@ -519,6 +519,8 @@ class Ground(GameObj):
             if self.player.orientation == 1:
                 self.player.grounded_y = self.position.y
             else:
+                if not self.player.dead and self.player.position.y > Ground.ALTITUDE:
+                    self.player.kill("Ground")
                 self.player.grounded_y = Ground.REVERSE_ALTITUDE
         self.position.x = get_game().get_cam().target.x - 1_000
     
@@ -1349,15 +1351,20 @@ class EditorLevelManager(GameObj):
     
     def cam_move(self):
         cam = get_game().get_cam()
+
+        speed_mul = 1
+        if is_key_down(KeyboardKey(0).KEY_LEFT_SHIFT):
+            speed_mul = 2
+
         if is_key_down(KeyboardKey(0).KEY_D):
-            cam.target.x += EditorLevelManager.CAM_SPEED
+            cam.target.x += EditorLevelManager.CAM_SPEED * speed_mul
         elif is_key_down(KeyboardKey(0).KEY_A):
-            cam.target.x -= EditorLevelManager.CAM_SPEED
+            cam.target.x -= EditorLevelManager.CAM_SPEED * speed_mul
         
         if is_key_down(KeyboardKey(0).KEY_W):
-            cam.target.y -= EditorLevelManager.CAM_SPEED
+            cam.target.y -= EditorLevelManager.CAM_SPEED * speed_mul
         elif is_key_down(KeyboardKey(0).KEY_S):
-            cam.target.y += EditorLevelManager.CAM_SPEED
+            cam.target.y += EditorLevelManager.CAM_SPEED * speed_mul
 
     @staticmethod
     def get_desired_mouse_pos():
