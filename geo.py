@@ -232,12 +232,19 @@ class Game:
         return None
 
 class Level:
+    CACHED_LEVEL = (None, None)
+
     def __init__(self, name, func):
         self.name = name
         self.func = func
-    
+        self.cached = None
+
     @staticmethod
     def from_file(file):
+        if file == Level.CACHED_LEVEL[0]:
+            print("Level loaded from file cache!")
+            return Level.CACHED_LEVEL[1]
+        
         print("Loading level from file ...")
         with open(file, "r") as f:
             lines = f.readlines()
@@ -245,10 +252,12 @@ class Level:
             name = lines[0]
             code = lines[1]
 
-            code = eval(code)
             def level_data():
-                return code
-            return Level(name, level_data)
+                c = eval(code)
+                return c
+            l = Level(name, level_data)
+            Level.CACHED_LEVEL = (file, l)
+            return l
 
     def get(self):
         return self.func()
@@ -309,6 +318,8 @@ class Player(GameObj):
             )
         
         self.velocity = Vector2(0, 0)
+
+        self.tappedOrb = False
         
         self.wantJump = False
         self.grounded = False
@@ -400,8 +411,11 @@ class Player(GameObj):
            self.wantJump = True
         else:
             self.wantJump = False
+            self.tappedOrb = False
         
         if Input.reset_level():
+            global _attempts
+            _attempts += 1
             get_game().reload_level()
     
     @staticmethod
@@ -750,9 +764,10 @@ class Orb(GameObj):
         if self.already_tapped: return
         if self.player is None: return
         
-        if Input.jump_down():
+        if not self.player.tappedOrb and Input.jump_down():
             if VecMath.distance(self._center_player(), self.position) <= self.radius + Player.WIDTH:
                 self.already_tapped = True
+                self.player.tappedOrb = True
                 self.tapped()
     
     def draw(self):
