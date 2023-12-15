@@ -550,8 +550,13 @@ class Spike(GameObj):
 
         self.origin = Vector2(self.position.x, self.position.y - Player.HEIGHT * 0.5)
         self.rotation = rotation
+
+        desired_pos = VecMath.sub(self.position, Vector2(5, 30))
+        if rotation == 180:
+            desired_pos.y -= Spike.MID-5
+            
         self.area = Rectangle(
-            VecMath.sub(self.position, Vector2(5, 30)),
+            desired_pos,
             Vector2(10, 30)
         )
         self.player = None
