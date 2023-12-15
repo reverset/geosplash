@@ -1106,13 +1106,14 @@ class SmartTile(Item):
             self.pos1 = self.offset(self.pos1)
         elif self.pos2 is None:
             self.pos2 = EditorLevelManager.get_desired_mouse_pos()
+            self.pos2 = self.offset(self.pos2)
         else:
             self.pos1 = None
             self.pos2 = None
     
     def offset(self, where):
         w = super().offset(where)
-        w.x -= 10
+        w.x -= 5
         w.y -= 10
         return w
 
@@ -1128,7 +1129,7 @@ class SmartTile(Item):
 
         elif self.pos1 is not None and self.pos2 is None:
             temppos1 = clone_vec(self.pos1)
-            temppos2 = EditorLevelManager.get_desired_mouse_pos()
+            temppos2 = self.offset(EditorLevelManager.get_desired_mouse_pos())
             tempdim = VecMath.abs(VecMath.sub(temppos2, self.pos1))
             if temppos1.x > temppos2.x:
                 temppos1.x, temppos2.x = temppos2.x, temppos1.x
