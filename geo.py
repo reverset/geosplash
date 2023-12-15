@@ -1409,6 +1409,7 @@ class EditorLevelManager(GameObj):
                 print("Saving level to clipboard ...")
                 self.save_objs()
                 saved = self.get_saved()
+                saved.insert(0, Player())
                 set_clipboard_text(repr(saved))
                 print(f"Saved level to clipboard! ({len(saved)} objects)")
             
@@ -1595,7 +1596,7 @@ win_inited = False
 def main():
     global game
     global win_inited
-
+    
     levels = {
         "test": TestLevel(), 
         "hard": HardLevel(), 
@@ -1622,9 +1623,15 @@ def main():
                 looping = False
             except KeyError:
                 print("Invalid level name! Please try again.")
+    
+    editor_q = input("Would you like to open this level in editor mode? [Y]/n: ").lower()
+    if editor_q == "no" or editor_q == "n":
+        pass
+    else:
+        desired_level = EditorLevel(desired_level.level_data)
 
     game = Game()
-    game.set_level(EditorLevel(desired_level.level_data)) # SET LEVEL
+    game.set_level(desired_level) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
