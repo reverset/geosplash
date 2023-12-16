@@ -7,7 +7,13 @@ A clone of the popular game 'Geometry Dash' created purely for educational purpo
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Nuitka) (Windows and Linux)
+## To Compile (Using Nuitka) (Windows, Linux, and MacOS!)
+### Tested with Python 3.11
 ```console
 $ python3 ./compile.py
 ```
+### MacOS NOTE:
+- Ensure you have `pip install imageio`, so that the icon is setup properly on the executable.
+
+### Linux NOTE:
+- Ensure you have python3.11-devel installed.

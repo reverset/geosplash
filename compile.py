@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 """
 For linux, you need python headers insatlled (ex: dnf install python3.11-devel), or else
-Nuitka will complain.
+Nuitka will complain about a missing python header.
 
 For MacOS, make sure you have imageio installed (pip install imageio)
 """
