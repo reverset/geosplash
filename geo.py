@@ -1086,7 +1086,7 @@ class Item:
 
 class PlayerSpawnItem(Item):
     def __init__(self):
-        super().__init__("PlayerSpawn")
+        super().__init__("Player Spawn")
     
     def draw_preview(self, where):
         draw_circle(where.x, where.y, PlayerSpawn.RADIUS, GRAY)
@@ -1096,7 +1096,7 @@ class PlayerSpawnItem(Item):
 
 class SmartTile(Item):
     def __init__(self):
-        super().__init__("SmartTile")
+        super().__init__("Smart Tile")
         self.pos1 = None
         self.pos2 = None
         self.dim = None
@@ -1203,7 +1203,7 @@ class SpikeItem(Item):
 
 class JumpOrbItem(Item):
     def __init__(self):
-        super().__init__("JumpOrb")
+        super().__init__("Jump Orb")
     
     def place(self, where, _rot):
         return JumpOrb(where)
@@ -1214,7 +1214,7 @@ class JumpOrbItem(Item):
 
 class GravityOrbItem(Item):
     def __init__(self):
-        super().__init__("GravityOrb")
+        super().__init__("Gravity Orb")
     
     def place(self, where, _rot):
         return GravityOrb(where)
@@ -1225,7 +1225,7 @@ class GravityOrbItem(Item):
 
 class JumpPadItem(Item):
     def __init__(self):
-        super().__init__("JumpPad")
+        super().__init__("Jump Pad")
 
     def offset(self, where):
         w = VecMath.floor_i(where)
@@ -1241,7 +1241,7 @@ class JumpPadItem(Item):
 
 class GravityPadItem(Item):
     def __init__(self):
-        super().__init__("GravityPad")
+        super().__init__("Gravity Pad")
 
     def offset(self, where):
         w = VecMath.floor_i(where)
@@ -1257,7 +1257,7 @@ class GravityPadItem(Item):
 
 class ShipPortalItem(Item):
     def __init__(self):
-        super().__init__("ShipPortal")
+        super().__init__("Ship Portal")
     
     def place(self, where, _rot):
         return ShipPortal(where)
@@ -1267,7 +1267,7 @@ class ShipPortalItem(Item):
 
 class SquarePortalItem(Item):
     def __init__(self):
-        super().__init__("SquarePortal")
+        super().__init__("Square Portal")
     
     def place(self, where, _rot):
         return SquarePortal(where)
@@ -1278,7 +1278,7 @@ class SquarePortalItem(Item):
 
 class WinWallItem(Item):
     def __init__(self):
-        super().__init__("WinWall")
+        super().__init__("Win Wall")
     
     def draw_preview(self, where):
         draw_rectangle(where.x, WinWall.Y_POS, WinWall.WIDTH, WinWall.HEIGHT, WinWall.COLOR)
@@ -1399,22 +1399,6 @@ class EditorLevelManager(GameObj):
             get_game().defer(lambda: get_game().set_level(test_level))
 
         pos = EditorLevelManager.get_desired_mouse_pos()
-        if is_mouse_button_down(1):
-            destroyed = False
-            for i in get_game().game_objects:
-                if i.position.x == actual.x and i.position.y == actual.y:
-                    get_game().game_objects.remove(i)
-                    destroyed = True
-                    break
-
-            if not destroyed:
-                point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-                for i in get_game().game_objects:
-                    if i.area is None: continue
-
-                    if Rect.check_collision_with_point(i.area, point):
-                        get_game().game_objects.remove(i)
-                        break
         
         if is_key_pressed(KeyboardKey(0).KEY_P):
             for i in get_game().game_objects[:]:
@@ -1457,20 +1441,37 @@ class EditorLevelManager(GameObj):
                 print("Loaded level!")
 
         if is_key_pressed(KeyboardKey(0).KEY_B):
-                global DEBUG_MODE
-                DEBUG_MODE = not DEBUG_MODE
+            global DEBUG_MODE
+            DEBUG_MODE = not DEBUG_MODE
 
         if is_key_pressed(KeyboardKey(0).KEY_K):
-                removed = 0
-                for i in get_game().game_objects[:]:
-                    if type(i) == PlayerSpawn:
-                        get_game().game_objects.remove(i)
-                        removed += 1
-                print(f"Removed {removed} spawnpoints")
+            removed = 0
+            for i in get_game().game_objects[:]:
+                if type(i) == PlayerSpawn:
+                    get_game().game_objects.remove(i)
+                    removed += 1
+            print(f"Removed {removed} spawnpoints")
 
         if self.held_item is not None:
             actual = self.held_item.offset(pos)
             actual.y -= 5
+
+            if is_mouse_button_down(1):
+                destroyed = False
+                for i in get_game().game_objects:
+                    if i.position.x == actual.x and i.position.y == actual.y:
+                        get_game().game_objects.remove(i)
+                        destroyed = True
+                        break
+
+                if not destroyed:
+                    point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+                    for i in get_game().game_objects:
+                        if i.area is None: continue
+
+                        if Rect.check_collision_with_point(i.area, point):
+                            get_game().game_objects.remove(i)
+                            break
 
             if is_mouse_button_pressed(0):
                 block = self.held_item.place(actual, self.rotation)
@@ -1492,6 +1493,10 @@ class EditorLevelManager(GameObj):
         cam = get_game().get_cam()
         cam_pos = VecMath.floor_i(cam.target)
         cam_off = VecMath.floor_i(cam.offset)
+
+        if self.held_item is not None:
+            text = self.held_item.name
+            draw_text(text, cam_pos.x - measure_text(text, 24)//2, cam_pos.y-cam_off.y+5, 24, BLACK)
 
         draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x, cam_pos.y - cam_off.y, 54, BLACK )
         draw_fps(cam_pos.x + cam_off.x - 100, cam_pos.y - cam_off.y + 20)
