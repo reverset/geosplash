@@ -82,7 +82,7 @@ class VecMath:
     def abs(v1):
         return Vector2(abs(v1.x), abs(v1.y))
 
-class Rectangle:
+class Rect:
     def __init__(self, position, dimension):
         self.position = position
         self.dimension = dimension
@@ -111,7 +111,7 @@ def clone_vec(vec):
 class GameObj:
     def __init__(self):
         self.position = Vector2(0, 0)
-        self.area = None # Area should be of type Rectangle
+        self.area = None # Area should be of type Rect
         self.always_think = False
         self.rotation = 0
         self.origin = None
@@ -313,7 +313,7 @@ class Player(GameObj):
         self.start_pos = clone_vec(start_pos)
         self.position = start_pos
         self.dead = False
-        self.area = Rectangle(
+        self.area = Rect(
                 self.position,
                 Vector2(Player.WIDTH, Player.HEIGHT)
             )
@@ -558,7 +558,7 @@ class Spike(GameObj):
         if rotation == 180:
             desired_pos.y -= Spike.MID-5
             
-        self.area = Rectangle(
+        self.area = Rect(
             desired_pos,
             Vector2(10, 30)
         )
@@ -575,7 +575,7 @@ class Spike(GameObj):
         if player_area is None: return
 
         for vert in self.area.vertices():
-            if Rectangle.check_collision_with_point(player_area, vert):
+            if Rect.check_collision_with_point(player_area, vert):
                 self.player.kill("Spike")
                 break
     
@@ -620,7 +620,7 @@ class Tile(GameObj):
         super().__init__()
         self.position = pos
         self.dim = dim
-        self.area = Rectangle(
+        self.area = Rect(
             self.position, self.dim
         )
         self.player = None
@@ -837,7 +837,7 @@ class Pad(GameObj):
         self.already_touched = False
         self.player = None
         
-        self.area = Rectangle(
+        self.area = Rect(
             clone_vec(self.position),
             Vector2(Pad.WIDTH, Pad.HEIGHT)
         )
@@ -856,7 +856,7 @@ class Pad(GameObj):
         verts = self.area.vertices()
         
         for i in verts:
-            if Rectangle.check_collision_with_point(self.player.area, i):
+            if Rect.check_collision_with_point(self.player.area, i):
                 self.already_touched = True
                 self.activate()
                 break
@@ -1011,7 +1011,7 @@ class Portal(GameObj):
         super().__init__()
 
         self.position = pos
-        self.area = Rectangle(
+        self.area = Rect(
             clone_vec(self.position),
             Vector2(Portal.WIDTH, Portal.HEIGHT)
         )
@@ -1029,7 +1029,7 @@ class Portal(GameObj):
         if self.player.area is None: return
 
         for i in self.player.area.vertices():
-            if Rectangle.check_collision_with_point(self.area, i):
+            if Rect.check_collision_with_point(self.area, i):
                 self.apply()
                 self.enabled = False
                 break
@@ -1423,7 +1423,7 @@ class EditorLevelManager(GameObj):
                     for i in get_game().game_objects:
                         if i.area is None: continue
 
-                        if Rectangle.check_collision_with_point(i.area, point):
+                        if Rect.check_collision_with_point(i.area, point):
                             get_game().game_objects.remove(i)
                             break
 
