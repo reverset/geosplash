@@ -6,6 +6,8 @@ Created on Tue Nov 14 13:32:55 2023
 @author: Sea bass Rueda
 """
 
+from itertools import cycle
+
 from pyray import *
 
 import math
@@ -648,24 +650,23 @@ class Tile(GameObj):
             if touching:
                 if i in top_verts:
                     if self.player.current_mode == "ship":
-                        self.player.velocity.y = 0.7 * self.player.orientation
+                        self.player.velocity.y = 1 * self.player.orientation
                     else:
                         self.player.kill("bonked on Tile")
                     break
                 if self.player.orientation == 1:
                     if i.y < self.position.y + ground_threshold:
                         self.player.grounded_y = self.area.position.y + bump
-                        break
                     else:
                         self.player.kill("side of Tile")
-                        break
+                    break
                 else:
                     bump = self.area.dimension.y
                     if i.y > (self.position.y + bump) + (ground_threshold * -1):
                         self.player.grounded_y = self.area.position.y + bump
                     else: # hit side of tile
                         self.player.kill("side of Tile")
-                        break
+                    break
                 
     
     def draw(self):
