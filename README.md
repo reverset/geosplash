@@ -7,7 +7,7 @@ A clone of the popular game 'Geometry Dash' created purely for educational purpo
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Nuitka) (Windows)
+## To Compile (Using Nuitka) (Windows and Linux)
 ```console
 $ python3 ./compile.py
 ```
