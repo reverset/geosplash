@@ -9,5 +9,5 @@ $ python3 geo.py
 ```
 ## To Compile (Using Nuitka) (Windows)
 ```console
-$ nuitka --follow-imports --onefile --windows-icon-from-ico=icons/Geometry_Splash_Logo.ico ./geo.py
+$ python3 ./compile.py
 ```

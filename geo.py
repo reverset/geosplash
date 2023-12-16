@@ -12,6 +12,7 @@ import math
 import random
 import sys
 import time
+import os
 
 DEBUG_MODE = False
 
@@ -1690,6 +1691,9 @@ def main():
     init_window(screen_width, screen_height, "Geometry Splash")
     set_target_fps(60)
     set_exit_key(-1)
+
+    logo = load_image("textures/Geometry_Splash_Logo.png")
+    set_window_icon(logo)
     
     cam = Camera2D(Vector2(screen_mid[0], screen_mid[1]), Vector2(0, 0), 0, 1)
     game.camera = cam
