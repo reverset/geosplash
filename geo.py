@@ -1399,6 +1399,75 @@ class EditorLevelManager(GameObj):
             get_game().defer(lambda: get_game().set_level(test_level))
 
         pos = EditorLevelManager.get_desired_mouse_pos()
+        if is_mouse_button_down(1):
+            destroyed = False
+            for i in get_game().game_objects:
+                if i.position.x == actual.x and i.position.y == actual.y:
+                    get_game().game_objects.remove(i)
+                    destroyed = True
+                    break
+
+            if not destroyed:
+                point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+                for i in get_game().game_objects:
+                    if i.area is None: continue
+
+                    if Rect.check_collision_with_point(i.area, point):
+                        get_game().game_objects.remove(i)
+                        break
+        
+        if is_key_pressed(KeyboardKey(0).KEY_P):
+            for i in get_game().game_objects[:]:
+                if type(i) == WinWall:
+                    get_game().game_objects.remove(i)
+                    break
+        
+        if is_key_pressed(KeyboardKey(0).KEY_C):
+            print("Saving level to clipboard ...")
+            self.save_objs()
+            saved = self.get_saved()
+            player_exists = False
+            for i in saved:
+                if type(i) == Player:
+                    player_exists = True
+                    break
+            if not player_exists:
+                saved.insert(0, Player())
+            set_clipboard_text(repr(saved))
+            print(f"Saved level to clipboard! ({len(saved)} objects)")
+
+        if is_key_pressed(KeyboardKey(0).KEY_L):
+            print("Loading level from clipboard ...")
+            clip = get_clipboard_text()
+            objs = None
+            try:
+                objs = eval(clip)
+            except:
+                sys.stderr.write("Invalid level data! Please ensure you copied the right stuff\n")
+            else:
+                for i in objs[:]:
+                    if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
+                        objs.remove(i)
+                objs.insert(0, EditorLevelManager())
+
+                def level_data():
+                    return objs
+                l = Level("Loaded Level", level_data)
+                get_game().defer(lambda: get_game().set_level(l))
+                print("Loaded level!")
+
+        if is_key_pressed(KeyboardKey(0).KEY_B):
+                global DEBUG_MODE
+                DEBUG_MODE = not DEBUG_MODE
+
+        if is_key_pressed(KeyboardKey(0).KEY_K):
+                removed = 0
+                for i in get_game().game_objects[:]:
+                    if type(i) == PlayerSpawn:
+                        get_game().game_objects.remove(i)
+                        removed += 1
+                print(f"Removed {removed} spawnpoints")
+
         if self.held_item is not None:
             actual = self.held_item.offset(pos)
             actual.y -= 5
@@ -1410,23 +1479,6 @@ class EditorLevelManager(GameObj):
                 else:
                     get_game().make([block])
             
-            if is_mouse_button_down(1):
-                destroyed = False
-                for i in get_game().game_objects:
-                    if i.position.x == actual.x and i.position.y == actual.y:
-                        get_game().game_objects.remove(i)
-                        destroyed = True
-                        break
-
-                if not destroyed:
-                    point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-                    for i in get_game().game_objects:
-                        if i.area is None: continue
-
-                        if Rect.check_collision_with_point(i.area, point):
-                            get_game().game_objects.remove(i)
-                            break
-
             if is_mouse_button_pressed(2):
                 self.held_item.special_trigger()
             
@@ -1434,58 +1486,6 @@ class EditorLevelManager(GameObj):
                 self.rotation += 45
                 if self.rotation > 315:
                     self.rotation = 0
-            
-            if is_key_pressed(KeyboardKey(0).KEY_P):
-                for i in get_game().game_objects[:]:
-                    if type(i) == WinWall:
-                        get_game().game_objects.remove(i)
-                        break
-            
-            if is_key_pressed(KeyboardKey(0).KEY_C):
-                print("Saving level to clipboard ...")
-                self.save_objs()
-                saved = self.get_saved()
-                player_exists = False
-                for i in saved:
-                    if type(i) == Player:
-                        player_exists = True
-                        break
-                if not player_exists:
-                    saved.insert(0, Player())
-                set_clipboard_text(repr(saved))
-                print(f"Saved level to clipboard! ({len(saved)} objects)")
-            
-            if is_key_pressed(KeyboardKey(0).KEY_L):
-                print("Loading level from clipboard ...")
-                clip = get_clipboard_text()
-                objs = None
-                try:
-                    objs = eval(clip)
-                except:
-                    sys.stderr.write("Invalid level data! Please ensure you copied the right stuff\n")
-                else:
-                    for i in objs[:]:
-                        if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
-                            objs.remove(i)
-                    objs.insert(0, EditorLevelManager())
-
-                    def level_data():
-                        return objs
-                    l = Level("Loaded Level", level_data)
-                    get_game().defer(lambda: get_game().set_level(l))
-                    print("Loaded level!")
-
-            if is_key_pressed(KeyboardKey(0).KEY_B):
-                global DEBUG_MODE
-                DEBUG_MODE = not DEBUG_MODE
-            
-            if is_key_pressed(KeyboardKey(0).KEY_K):
-                removed = 0
-                for i in get_game().game_objects[:]:
-                    if type(i) == PlayerSpawn:
-                        get_game().game_objects.remove(i)
-                        removed += 1
-                print(f"Removed {removed} spawnpoints")
                 
     
     def draw(self):
