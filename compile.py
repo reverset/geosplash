@@ -8,7 +8,7 @@ from zipfile import ZipFile
 For linux, you need python headers insatlled (ex: dnf install python3.11-devel), or else
 Nuitka will complain.
 
-MacOS not tested .,;,,;,.
+For MacOS, make sure you have imageio installed (pip install imageio)
 """
 
 APP_NAME = "geo"
@@ -19,7 +19,7 @@ if plat == "Windows":
 elif plat == "Linux":
     COMMAND = "nuitka --onefile --linux-icon=./icons/Geometry_Splash_Logo.png ./geo.py -o geo"
 elif plat == "Darwin":
-    COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py"
+    COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py --macos-app-icon=./icons/Geometry_Splash_Logo.png"
 
 PYTHON_CMD = "python3.11"
 
