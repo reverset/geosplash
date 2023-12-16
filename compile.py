@@ -1,7 +1,27 @@
 import subprocess
 import os
+import platform
 
 from zipfile import ZipFile
+
+"""
+For linux, you need python headers insatlled (ex: dnf install python3.11-devel), or else
+Nuitka will complain.
+
+MacOS not tested .,;,,;,.
+"""
+
+APP_NAME = "geo"
+
+plat = platform.system()
+if plat == "Windows":
+    COMMAND = "nuitka --onefile --windows-icon-from-ico=./icons/Geometry_Splash_Logo.ico ./geo.py"
+elif plat == "Linux":
+    COMMAND = "nuitka --onefile --linux-icon=./icons/Geometry_Splash_Logo.png ./geo.py -o geo"
+elif plat == "Darwin":
+    COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py"
+
+PYTHON_CMD = "python3.11"
 
 def get_all_in_folder(folder):
     f = []
@@ -11,14 +31,29 @@ def get_all_in_folder(folder):
             f.append(path)
     return f
 
+def get_main_executable():
+    if plat == "Windows":
+        return APP_NAME + ".exe"
+    elif plat == "Linux":
+        return APP_NAME
+    elif plat == "Darwin":
+        return APP_NAME + ".app"
+
 def get_relevant_files():
-    files = ["geo.exe"]
-    files += get_all_in_folder("textures")
-    files += get_all_in_folder("levels")
+    files = [get_main_executable()]
+    files += get_all_in_folder("./textures")
+    files += get_all_in_folder("./levels")
     
     return files
 
-output = subprocess.run("nuitka --onefile --windows-icon-from-ico=icons/Geometry_Splash_Logo.ico ./geo.py", shell=True)
+output = subprocess.run(COMMAND, shell=True)
+print("Nuitka command not found, attempting now as a python module ...")
+if output.stderr is None:
+    output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
+
+if output.stderr is not None and "FATAL" in output.stderr.decode('utf-8'):
+    raise RuntimeError("Zipping prevented... see nuitka errors")
+
 
 print("Zipping the following files:")
 desired_files = get_relevant_files()
