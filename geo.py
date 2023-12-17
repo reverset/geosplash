@@ -287,6 +287,7 @@ class Player(GameObj):
     SHIP_CLIMB_SPEED = 0.92
     SHIP_GRAVITY = 0.4
 
+    BALL_SIZE = 30
 
     ROTATE_SPEED = 7
 
@@ -307,7 +308,8 @@ class Player(GameObj):
 
         self.modes = {
             "square": (self.square_logic, self.square_draw),
-            "ship": (self.ship_logic, self.ship_draw)
+            "ship": (self.ship_logic, self.ship_draw),
+            "ball": (self.ball_logic, self.ball_draw)
         }
 
         self.current_mode = "square"
@@ -395,6 +397,14 @@ class Player(GameObj):
 
             if self.grounded:
                 self.grounded = False
+    
+    def ball_logic(self):
+        self._fall(Player.GRAVITY)
+
+        if self.wantJump and self.grounded:
+            self.flip_gravity()
+            self.position.y += 1 * self.orientation
+        
 
     def logic(self):
         if self.dead: return
@@ -488,6 +498,13 @@ class Player(GameObj):
         pos.y += Player.HEIGHT//2
 
         draw_ellipse(pos.x, pos.y, Player.SHIP_WIDTH, Player.SHIP_HEIGHT, BLUE)
+
+    def ball_draw(self):
+        pos = clone_vec(self.position)
+        pos = VecMath.add(pos, Vector2(Player.WIDTH//2, Player.HEIGHT//2))
+        pos = VecMath.floor_i(pos)
+
+        draw_circle(pos.x, pos.y, Player.BALL_SIZE, BLUE)
 
     def draw(self):
         if self.dead: return
@@ -1042,8 +1059,6 @@ class Portal(GameObj):
     def apply(self):
         pass
 
-    
-
 class ShipPortal(Portal):
     COLOR = PURPLE
 
@@ -1062,6 +1077,16 @@ class SquarePortal(Portal):
     
     def apply(self):
         self.player.set_mode("square")
+
+class BallPortal(Portal):
+    COLOR = VIOLET
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.color = BallPortal.COLOR
+    
+    def apply(self):
+        self.player.set_mode("ball")
 
 class Item:
     def __init__(self, name):
@@ -1276,6 +1301,15 @@ class SquarePortalItem(Item):
     def draw_preview(self, where):
         draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, SquarePortal.COLOR)
 
+class BallPortalItem(Item):
+    def __init__(self):
+        super().__init__("Ball Portal")
+    
+    def place(self, where, _rot):
+        return BallPortal(where)
+    
+    def draw_preview(self, where):
+        draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, BallPortal.COLOR)
 
 class WinWallItem(Item):
     def __init__(self):
@@ -1327,7 +1361,7 @@ class EditorLevelManager(GameObj):
         self.items = [
             None, PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            ShipPortalItem(), SquarePortalItem(), WinWallItem()
+            ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WinWallItem()
         ]
         self.held_item_index = 0
 
