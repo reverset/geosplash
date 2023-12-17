@@ -111,6 +111,9 @@ class Rect:
             if up_left.y <= point.y <= bot_left.y:
                 return True
         return False
+
+    def __repr__(self):
+        return f"Rect(pos=V2({self.position.x}, {self.position.y}), dim=V2({self.dimension.x}, {self.dimension.y}))"
         
         
 
@@ -126,7 +129,7 @@ class GameObj:
         self.origin = None
     
     def clone(self):
-        raise RuntimeError("Clone not supported for the given GameObj")
+        raise RuntimeError(f"Clone not supported for '{self.__class__}'")
 
     def manifested(self):
         pass
@@ -148,6 +151,12 @@ class GameObj:
     def draw(self):
         pass
     
+    def is_ui_element(self):
+        return False
+
+    def ui_draw(self):
+        pass
+
     def get_tag(self):
         return ""
     
@@ -210,6 +219,9 @@ class Game:
         assert self.level != None, "Attempted to reload level that is not loaded to begin with."
         self.set_level(self.level)
     
+    def get_level(self):
+        return self.level
+    
     def stop(self):
         self.should_end = True
         
@@ -253,7 +265,7 @@ class Level:
     CACHED_LEVEL = (None, None)
 
     def __init__(self, name, func):
-        self.name = name
+        self.name = name.strip()
         self.func = func
         self.cached = None
 
@@ -1487,6 +1499,65 @@ class EditorLevelManager(GameObj):
     ROUND_WIDTH = -1
     CAM_SPEED = 10
 
+    class SaveUIGroup(GameObj):
+        def __init__(self):
+            super().__init__()
+            self.elements = [
+                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, callback=self.do_save),
+                UI.BetterButton(Vector2(screen_width//4+100, 400), Vector2(500, 70), callback=self.do_save),
+                UI.TextDisplay(Vector2(screen_width//2-50, 410), "SAVE", 54, WHITE)
+            ]
+            self.visible = True
+            self.elements[0].text = get_game().get_level().name
+            self.done = False
+        
+        def destroyed(self):
+            self.done = True
+
+        def do_save(self):
+            self.visible = False
+            name = self.elements[0].text.strip()
+            if name == "":
+                sys.stderr.write("Missing level name! Using default name of 'unnamed'.\n")
+                name = "unnamed"
+
+            get_game().get_level().name = name
+            
+            desired_file_name = "./custom_levels/" + name + ".level"
+            
+            if not os.path.exists("./custom_levels/"):
+                os.mkdir("./custom_levels/")
+            
+            level_data = repr(get_game().find_by_tag("editor_manager").get_actual_saved())
+
+            with open(desired_file_name, "w") as f:
+                f.write(name + "\n")
+                f.write(level_data)
+            
+            get_game().defer(lambda: get_game().destroy([self]))
+
+        def get_tag(self):
+            return "editor_ui_group"
+
+        def is_ui_element(self):
+            return True
+
+        def logic(self):
+            if self.visible:
+                for i in self.elements:
+                    i.logic()
+
+        def ui_draw(self):
+            if self.visible:
+                for i in self.elements:
+                    i.ui_draw()
+            else:
+                self.elements[0].selected = False
+                draw_text("Saving ...", screen_width//2, 100, 44, BLACK)
+
+    def get_tag(self):
+        return "editor_manager"
+
     def __init__(self):
         super().__init__()
         self.always_think = True
@@ -1504,6 +1575,8 @@ class EditorLevelManager(GameObj):
         self.rotation = 0
 
         self.saved = []
+        
+        self.save_window = None
     
     def get_saved(self):
         return [o.clone() for o in self.saved]
@@ -1511,7 +1584,7 @@ class EditorLevelManager(GameObj):
     def save_objs(self):
         self.saved.clear()
         for i in get_game().game_objects:
-            if type(i) == EditorLevelManager:
+            if type(i) == EditorLevelManager or i.get_tag().startswith("editor"):
                 continue
             self.saved.append(i.clone())        
 
@@ -1528,7 +1601,7 @@ class EditorLevelManager(GameObj):
     
     def cam_move(self):
         cam = get_game().get_cam()
-
+        
         speed_mul = 1
         if is_key_down(KeyboardKey(0).KEY_LEFT_SHIFT):
             speed_mul = 2
@@ -1551,12 +1624,42 @@ class EditorLevelManager(GameObj):
         pos.y = round(pos.y, EditorLevelManager.ROUND_WIDTH)
         return pos
 
+    def get_actual_saved(self):
+        self.save_objs()
+        saved = self.get_saved()
+        player_exists = False
+        for i in saved:
+            if type(i) == Player:
+                player_exists = True
+                break
+        if not player_exists:
+            saved.insert(0, Player())
+        
+        return saved
+
     def logic(self):
-        self.pick_item()
-        self.cam_move()
+        
+        if self.save_window is not None:
+            if self.save_window.done:
+                self.save_window = None
+            if is_key_pressed(KeyboardKey(0).KEY_S) and is_key_down(KeyboardKey(0).KEY_LEFT_CONTROL):
+                get_game().destroy([self.save_window])
+                self.save_window = None
+            elif is_key_released(KeyboardKey(0).KEY_ESCAPE):
+                get_game().destroy([self.save_window])
+                self.save_window = None
+            
+            return
+
+        elif is_key_pressed(KeyboardKey(0).KEY_S) and is_key_down(KeyboardKey(0).KEY_LEFT_CONTROL):
+            self.save_window = EditorLevelManager.SaveUIGroup()
+            get_game().make([self.save_window])
 
         if is_key_released(KeyboardKey(0).KEY_ESCAPE):
             get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+
+        self.pick_item()
+        self.cam_move()
 
         if is_key_pressed(KeyboardKey(0).KEY_T):
             objs = [EditorLevelPreview(self), Player()]
@@ -1578,18 +1681,10 @@ class EditorLevelManager(GameObj):
                 if type(i) == WinWall:
                     get_game().game_objects.remove(i)
                     break
-        
+
         if is_key_pressed(KeyboardKey(0).KEY_C):
             print("Saving level to clipboard ...")
-            self.save_objs()
-            saved = self.get_saved()
-            player_exists = False
-            for i in saved:
-                if type(i) == Player:
-                    player_exists = True
-                    break
-            if not player_exists:
-                saved.insert(0, Player())
+            saved = self.get_actual_saved()
             set_clipboard_text(repr(saved))
             print(f"Saved level to clipboard! ({len(saved)} objects)")
 
@@ -1696,6 +1791,7 @@ class EditorLevel(Level):
             def get():
                 if issubclass(type(level_get), Level):
                     retrived = level_get.get()
+                    self.name = level_get.name
                 else:
                     retrived = level_get()
                 manager_exists = False
@@ -1836,36 +1932,132 @@ class RadioAngerLevel(Level):
 
 class UI:
     class Button(GameObj):
-        def __init__(self, pos, dim):
+        def __init__(self, pos, dim, callback=lambda: None):
             super().__init__()
             self.position = pos
             self.area = Rect(
                 clone_vec(pos),
                 dim
             )
-        
+            self.callback = callback
+
+        def is_ui_element(self):
+            return True
+
         def logic(self):
-            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            if self.is_ui_element():
+                mouse = get_mouse_position()
+            else:
+                mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
             if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
                 self.apply()
-        
+                self.callback()
+
         def apply(self):
             pass
     
     class BetterButton(Button):
-        def __init__(self, pos, dim, color=DARKGRAY):
-            super().__init__(pos, dim)
+        def __init__(self, pos, dim, color=DARKGRAY, callback=lambda: None):
+            super().__init__(pos, dim, callback)
             self.color = color
+            self.callback = callback
 
-        def draw(self):
+        def is_ui_element(self):
+            return True
+
+        def ui_draw(self):
             pos = VecMath.floor_i(self.position)
             dim = VecMath.floor_i(self.area.dimension)
             draw_rectangle_rounded(Rectangle(pos.x, pos.y, dim.x, dim.y), 0.5, 50, self.color)
     
     class TextField(BetterButton):
-        def __init__(self, pos, dim):
+        def __init__(self, pos, dim, font_size, multiline=False, max_per_line=12, callback=lambda: None):
             super().__init__(pos, dim)
-        # TODO
+            self.selected = False
+            self.text = ""
+
+            self.font_size = font_size
+            self.multiline = multiline
+            self.max_per_line = max_per_line
+
+            self.cursor = VecMath.add(self.position, Vector2(100, 50))
+            self.callback_enter = callback
+        
+        def apply(self):
+            self.selected = True
+
+        def logic(self):
+            super().logic()
+            if self.selected:
+                key = get_key_pressed()
+                if key != 0:
+                    actual = chr(key)
+
+                    if key == KeyboardKey(0).KEY_BACKSPACE:
+                        self.text = self.text[:len(self.text)-1]
+                        actual = ""
+                    
+                    if key == KeyboardKey(0).KEY_LEFT_SHIFT:
+                        actual = ""
+
+                    if not is_key_down(KeyboardKey(0).KEY_LEFT_SHIFT):
+                        actual = actual.lower()
+
+                    if key == KeyboardKey(0).KEY_ENTER:
+                        if self.multiline:
+                            if is_key_pressed(KeyboardKey(0).KEY_LEFT_SHIFT):
+                                actual = ""
+                                self._submit()
+                            elif len(self.text) < self.max_per_line:
+                                actual = "\n"
+                        else:
+                            actual = ""
+                            self._submit()
+
+                    if len(self.text) < self.max_per_line:
+                        self.text += actual
+
+                if is_mouse_button_pressed(0):
+                    self.selected = False
+                
+
+        def ui_draw(self):
+            super().ui_draw()
+            pos = VecMath.floor_i(self.position)
+
+            draw_text(self.text, pos.x+100, pos.y+50, self.font_size, WHITE)
+
+            if self.selected:
+                self.cursor.x = pos.x+100 + measure_text(self.text, self.font_size)
+                cur = VecMath.floor_i(self.cursor)
+
+                draw_rectangle(cur.x, cur.y, 5, self.font_size, WHITE)
+        
+        def _submit(self):
+            self.submit()
+            self.callback_enter()
+
+        def submit(self):
+            pass
+    
+    class TextDisplay(GameObj):
+        def __init__(self, pos, text, font_size, color):
+            super().__init__()
+            self.position = pos
+            self.text = text
+            self.font_size = font_size
+            self.color = color
+        
+        def is_ui_element(self):
+            return True
+
+        def __len__(self):
+            return measure_text(self.text, self.font_size)
+
+        def ui_draw(self):
+            pos = VecMath.floor_i(self.position)
+            draw_text(self.text, pos.x, pos.y, self.font_size, self.color)
+                
 
 class LevelSelectScreen(Level):
     LEVELS = [
@@ -1926,6 +2118,7 @@ class LevelSelectScreen(Level):
         def __init__(self):
             super().__init__(Vector2(), Vector2(LevelSelectScreen.EditorCheckBox.WIDTH, LevelSelectScreen.EditorCheckBox.HEIGHT))
             self.checked = False
+            self.always_think = True
         
         def get_tag(self):
             return "editor_check"
@@ -1940,6 +2133,9 @@ class LevelSelectScreen(Level):
         
         def apply(self):
             self.checked = not self.checked
+
+        def is_ui_element(self):
+            return False
 
         def draw(self):
             pos = VecMath.floor_i(self.position)
@@ -1966,6 +2162,9 @@ class LevelSelectScreen(Level):
             get_game().get_cam().target = Vector2(0, 0)
             get_game().defer(lambda: get_game().set_level(desired_level))
 
+        def is_ui_element(self):
+            return False
+
         def draw(self):
             pos = VecMath.floor_i(self.position)
             draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT), 0.5, 50, self.color)
@@ -1981,6 +2180,7 @@ class LevelSelectScreen(Level):
             self.toggled = False
             self.text = "Custom Levels"
             self.levels = []
+            self.always_think = True
         
         def is_toggled(self):
             return self.toggled
@@ -2036,6 +2236,9 @@ class LevelSelectScreen(Level):
             super().logic()
             self.position = VecMath.add(get_game().get_cam().target, Vector2(400, 210))
             self.area.position = clone_vec(self.position)
+
+        def is_ui_element(self):
+            return False
 
         def draw(self):
             pos = VecMath.floor_i(self.position)
@@ -2123,23 +2326,32 @@ def main():
                 desired_cam_x = cam.target.x
             cam.target = Vector2(desired_cam_x, desired_cam_y)
 
+        uis = set()
         ground = None
         for i in visible:
             if i.get_tag() == "Ground":
                 ground = i
                 continue
-            i.predraw()
-            i.draw()
-            i.postdraw()
+            if i.is_ui_element():
+                uis.add(i)
+            else:
+                i.predraw()
+                i.draw()
+                i.postdraw()
 
         if ground is not None: # Why? so it renders ontop of everything
             ground.predraw()
             ground.draw()
             ground.postdraw()
+
         
         game._call_deferred()
         
         end_mode_2d()
+
+        for i in uis:
+            i.ui_draw()
+
         end_drawing()
         
         delta = get_time() - last_frame
