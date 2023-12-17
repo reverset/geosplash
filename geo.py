@@ -1507,7 +1507,7 @@ class EditorLevelManager(GameObj):
         def __init__(self):
             super().__init__()
             self.elements = [
-                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, callback=self.do_save),
+                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, banned=[KeyboardKey(0).KEY_BACKSLASH, KeyboardKey(0).KEY_SLASH], callback=self.do_save),
                 UI.BetterButton(Vector2(screen_width//4+100, 400), Vector2(500, 70), callback=self.do_save),
                 UI.TextDisplay(Vector2(screen_width//2-50, 410), "SAVE", 54, WHITE)
             ]
@@ -1977,7 +1977,7 @@ class UI:
             draw_rectangle_rounded(Rectangle(pos.x, pos.y, dim.x, dim.y), 0.5, 50, self.color)
     
     class TextField(BetterButton):
-        def __init__(self, pos, dim, font_size, multiline=False, max_per_line=12, callback=lambda: None):
+        def __init__(self, pos, dim, font_size, multiline=False, max_per_line=12, callback=lambda: None, banned=None):
             super().__init__(pos, dim)
             self.selected = False
             self.text = ""
@@ -1988,6 +1988,8 @@ class UI:
 
             self.cursor = VecMath.add(self.position, Vector2(100, 50))
             self.callback_enter = callback
+
+            self.banned = banned
         
         def apply(self):
             self.selected = True
@@ -1998,6 +2000,13 @@ class UI:
                 key = get_key_pressed()
                 if key != 0:
                     actual = chr(key)
+                    if self.banned is not None:
+                        if key in self.banned:
+                            actual = ""
+                    
+                    # ugly code but lol
+                    if key in [KeyboardKey(0).KEY_LEFT, KeyboardKey(0).KEY_RIGHT, KeyboardKey(0).KEY_UP, KeyboardKey(0).KEY_DOWN]:
+                        actual = ""
 
                     if key == KeyboardKey(0).KEY_BACKSPACE:
                         self.text = self.text[:len(self.text)-1]
