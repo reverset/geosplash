@@ -12,6 +12,7 @@ For MacOS, make sure you have imageio installed (pip install imageio)
 """
 
 APP_NAME = "geo"
+AS_MODULE = False
 
 plat = platform.system()
 if plat == "Windows":
@@ -46,12 +47,12 @@ def get_relevant_files():
     
     return files
 
-output = subprocess.run(COMMAND, shell=True)
-print("Nuitka command not found, attempting now as a python module ...")
-if output.stderr is None:
+if AS_MODULE:
     output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
+else:
+    output = subprocess.run(COMMAND, shell=True)
 
-if output.stderr is not None and "FATAL" in output.stderr.decode('utf-8'):
+if output.stderr is not None and "FATAL" in output.stderr.decode('utf-8'): # FIXME
     raise RuntimeError("Zipping prevented... see nuitka errors")
 
 
