@@ -93,6 +93,9 @@ class Rect:
         self.position = position
         self.dimension = dimension
     
+    def clone(self):
+        return Rect(clone_vec(self.position), clone_vec(self.dimension))
+    
     def vertices(self):
         up_left = self.position
         up_right = VecMath.add(self.position, Vector2(self.dimension.x, 0))
@@ -285,6 +288,7 @@ class Player(GameObj):
     WIDTH = 50
     HEIGHT = 50
     GRAVITY = 1
+    AREA_DIM = Vector2(WIDTH, HEIGHT)
 
     SHIP_WIDTH = 40
     SHIP_HEIGHT = 20
@@ -296,6 +300,7 @@ class Player(GameObj):
     WAVE_SPEED = 7
     WAVE_COLOR = DARKBLUE
     WAVE_THICKNESS = 15
+    WAVE_AREA_DIM = Vector2(WIDTH//2, HEIGHT//2)
 
     ROTATE_SPEED = 7
 
@@ -314,6 +319,15 @@ class Player(GameObj):
 
         if self.current_mode == "wave":
             self.wave_points.append(clone_vec(self.position))
+            self.area = Rect(
+                self.position,
+                Player.WAVE_AREA_DIM
+            )
+        else:
+            self.area = Rect(
+                self.position,
+                Player.AREA_DIM
+            )
 
     def __init__(self, start_pos = Vector2(-400, 0)):
         super().__init__()
@@ -346,7 +360,9 @@ class Player(GameObj):
 
         self.halted = False
 
+        self.ball_can_jump = True
         self.wave_points = []
+        
     
     def manifested(self):
         get_game().make([AttemptCounter(clone_vec(self.position))])
@@ -437,9 +453,13 @@ class Player(GameObj):
     def ball_logic(self):
         self._fall(Player.GRAVITY)
 
-        if self.wantJump and self.grounded:
+        if self.wantJump and self.ball_can_jump and self.grounded:
+            self.ball_can_jump = False
             self.flip_gravity()
             self.position.y += 1 * self.orientation
+        
+        if Input.jump_released():
+            self.ball_can_jump = True
     
     def wave_add_point(self):
         self.wave_points.append(clone_vec(self.position))
@@ -480,7 +500,11 @@ class Player(GameObj):
         
         if not self.dead:
             self._update_velocity()
-            self.area.position = self.position # ensure that hitbox is adjusted to the visible position, can NOT clone the vector here because of timing & pointers 
+            
+            desired_area_pos = self.position
+            if self.current_mode == "wave":
+                desired_area_pos = VecMath.add(self.position, Vector2(Player.WIDTH//4, Player.WIDTH//4))
+            self.area.position = desired_area_pos # ensure that hitbox is adjusted to the visible position, can NOT clone the vector here because of timing & pointers 
         
         
     def _act_on_input(self):
@@ -1772,7 +1796,15 @@ class ShipLevel(Level):
     
     @staticmethod
     def level_data():
-        return [Player(), Ground(), Tile(Vector2(-475.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-425.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(-475.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(-375.0, 250.0), Vector2(50.0, 50.0)), PlayerSpawn(Vector2(-420.0, 55.0)), Tile(Vector2(-285.0, 140.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(-285.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 230.0), Vector2(50.0, 50.0)), Tile(Vector2(-185.0, 270.0), Vector2(50.0, 50.0)), Tile(Vector2(-85.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(-10.0, 330.0), 0), Spike(Vector2(20.0, 330.0), 0), Spike(Vector2(50.0, 330.0), 0), GravityPad(Vector2(85.0, 290.0)), GravityPad(Vector2(125.0, 100.0)), GravityPad(Vector2(145.0, 290.0)), GravityPad(Vector2(185.0, 100.0)), JumpPad(Vector2(265.0, 290.0)), Tile(Vector2(385.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(385.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(385.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(485.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -140.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -190.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -240.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -290.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(435.0, -380.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -330.0), Vector2(50.0, 50.0)), Tile(Vector2(535.0, -360.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 170.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(565.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(690.0, 250.0), 0), Spike(Vector2(740.0, 250.0), 0), Tile(Vector2(665.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(715.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(890.0, 220.0), 0), Spike(Vector2(890.0, 270.0), 180), Spike(Vector2(940.0, 270.0), 540), Spike(Vector2(940.0, 220.0), 720), JumpOrb(Vector2(820.0, 185.0)), JumpOrb(Vector2(1010.0, 195.0)), Tile(Vector2(1175.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -160.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -210.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -260.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -310.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, -360.0), Vector2(50.0, 50.0)), ShipPortal(Vector2(1190.0, -15.0)), Tile(Vector2(1335.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1335.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(1335.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -70.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -120.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -170.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -270.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(1535.0, -20.0), Vector2(50.0, 50.0)), Spike(Vector2(1560.0, 80.0), 1980), Spike(Vector2(1360.0, 150.0), 2160), Spike(Vector2(1780.0, 110.0), 2160), Tile(Vector2(1755.0, 110.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 160.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 210.0), Vector2(50.0, 50.0)), Tile(Vector2(1755.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -40.0), Vector2(50.0, 50.0)), Spike(Vector2(2010.0, 60.0), 2340), Spike(Vector2(2010.0, 190.0), 2520), Spike(Vector2(2060.0, 190.0), 2520), Spike(Vector2(2110.0, 190.0), 2520), Spike(Vector2(2160.0, 190.0), 2520), Spike(Vector2(2210.0, 190.0), 2520), Spike(Vector2(2060.0, 60.0), 2700), Spike(Vector2(2110.0, 60.0), 2700), Spike(Vector2(2160.0, 60.0), 2700), Tile(Vector2(2035.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2085.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2135.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -40.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2035.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2085.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2135.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 190.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 240.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 220.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, 260.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(1985.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -90.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -130.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -180.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -280.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -330.0), Vector2(50.0, 50.0)), Tile(Vector2(2185.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(1225.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1275.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1325.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1365.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1415.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1455.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1495.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1585.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1635.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1685.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1735.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1785.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1835.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1885.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(1935.0, -230.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 250.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 50.0), Vector2(50.0, 50.0)), Spike(Vector2(2550.0, 0.0), 2880), Spike(Vector2(2600.0, 0.0), 2880), Spike(Vector2(2650.0, 0.0), 2880), Tile(Vector2(2475.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 0.0), Vector2(50.0, 50.0)), Spike(Vector2(2540.0, -120.0), 3060), Spike(Vector2(2580.0, -120.0), 3060), Spike(Vector2(2620.0, -120.0), 3060), Spike(Vector2(2660.0, -120.0), 3060), Tile(Vector2(2475.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2525.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2575.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2635.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -220.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -270.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -320.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, -370.0), Vector2(50.0, 50.0)), Tile(Vector2(2425.0, 0.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 50.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 100.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 150.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 200.0), Vector2(50.0, 50.0)), Tile(Vector2(2625.0, 250.0), Vector2(50.0, 50.0)), Spike(Vector2(2850.0, 70.0), 3240), Spike(Vector2(2900.0, 70.0), 3240), Spike(Vector2(2850.0, 120.0), 3420), Spike(Vector2(2900.0, 120.0), 3420), Spike(Vector2(3050.0, -90.0), 3420), Spike(Vector2(3090.0, -90.0), 3420), Spike(Vector2(3050.0, -140.0), 3600), Spike(Vector2(3090.0, -140.0), 3600), WinWall(Vector2(3700.0, -5.0)), Spike(Vector2(1200.0, -60.0), 180), Tile(Vector2(385.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(335.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(285.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(235.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(185.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(135.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(85.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(35.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -110.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -160.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -210.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -260.0), Vector2(50.0, 50.0)), Tile(Vector2(-15.0, -310.0), Vector2(50.0, 50.0)), Spike(Vector2(100.0, -10.0), 180), Spike(Vector2(150.0, -10.0), 180), Spike(Vector2(200.0, -10.0), 180), Spike(Vector2(250.0, -10.0), 180), Spike(Vector2(300.0, -10.0), 180), Spike(Vector2(50.0, -10.0), 180), Spike(Vector2(350.0, -10.0), 180), Tile(Vector2(-15.0, -360.0), Vector2(50.0, 50.0)), Tile(Vector2(1175.0, 100.0), Vector2(50.0, 50.0))] 
+        return Level.from_file("levels/ship.level").get()
+    
+class BallWaveLevel(Level):
+    def __init__(self):
+        super().__init__("Ball Wave Level", BallWaveLevel.level_data)
+    
+    @staticmethod
+    def level_data():
+        return Level.from_file("levels/ballwave.level").get()
 
 class RadioAngerLevel(Level):
     def __init__(self):
@@ -1792,6 +1824,7 @@ def main():
         "test": TestLevel(), 
         "hard": HardLevel(), 
         "ship": ShipLevel(), 
+        "ballwave": BallWaveLevel(),
         "radio anger": RadioAngerLevel()
     }
 
@@ -1804,7 +1837,7 @@ def main():
     while looping:
         desired_level = input("Please type the level name you'd like to play: ")
         if desired_level == "":
-            desired_level = levels["hard"]
+            desired_level = levels["blank"]
             looping = False
         elif desired_level == "exit":
             return
