@@ -1834,6 +1834,39 @@ class RadioAngerLevel(Level):
     def level_data():
         return Level.from_file("levels/radioanger.level").get()
 
+class UI:
+    class Button(GameObj):
+        def __init__(self, pos, dim):
+            super().__init__()
+            self.position = pos
+            self.area = Rect(
+                clone_vec(pos),
+                dim
+            )
+        
+        def logic(self):
+            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
+                self.apply()
+        
+        def apply(self):
+            pass
+    
+    class BetterButton(Button):
+        def __init__(self, pos, dim, color=DARKGRAY):
+            super().__init__(pos, dim)
+            self.color = color
+
+        def draw(self):
+            pos = VecMath.floor_i(self.position)
+            dim = VecMath.floor_i(self.area.dimension)
+            draw_rectangle_rounded(Rectangle(pos.x, pos.y, dim.x, dim.y), 0.5, 50, self.color)
+    
+    class TextField(BetterButton):
+        def __init__(self, pos, dim):
+            super().__init__(pos, dim)
+        # TODO
+
 class LevelSelectScreen(Level):
     LEVELS = [
         BlankLevel(),
@@ -1885,24 +1918,7 @@ class LevelSelectScreen(Level):
                 elif self.moving_to+10_000 > cam.target.x:
                     cam.target.x += 100
 
-    class Button(GameObj):
-        def __init__(self, pos, dim):
-            super().__init__()
-            self.position = pos
-            self.area = Rect(
-                clone_vec(pos),
-                dim
-            )
-        
-        def logic(self):
-            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
-                self.apply()
-        
-        def apply(self):
-            pass
-
-    class EditorCheckBox(Button):
+    class EditorCheckBox(UI.Button):
         WIDTH = 100
         HEIGHT = 100
         CIRCLE_RAD = 35
@@ -1934,7 +1950,7 @@ class LevelSelectScreen(Level):
 
             draw_text("Open in Editor", pos.x+110, pos.y+35, 34, BLACK)
 
-    class LevelButton(Button):
+    class LevelButton(UI.Button):
         WIDTH = 1_000
         HEIGHT = 500
 
@@ -1956,7 +1972,7 @@ class LevelSelectScreen(Level):
 
             draw_text(self.level.name, pos.x+500-(measure_text(self.level.name, 54)//2), pos.y+200, 54, WHITE)
 
-    class CustomLevels(Button):
+    class CustomLevels(UI.Button):
         WIDTH = 200
         HEIGHT = 100
 
@@ -2059,7 +2075,6 @@ def main():
     init_window(screen_width, screen_height, "Geometry Splash")
     set_target_fps(60)
     set_exit_key(-1)
-
 
     logo = load_image("textures/Geometry_Splash_Logo.png")
     set_window_icon(logo)
