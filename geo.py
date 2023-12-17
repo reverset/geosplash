@@ -6,7 +6,7 @@ Created on Tue Nov 14 13:32:55 2023
 @author: Sea bass Rueda
 """
 
-from itertools import cycle
+import itertools as iter
 
 from pyray import *
 
@@ -33,6 +33,10 @@ class Input:
     def jump_pressed():
         return is_key_pressed(KeyboardKey(0).KEY_SPACE) or is_key_pressed(KeyboardKey(0).KEY_UP) or is_mouse_button_pressed(0) or is_key_pressed(KeyboardKey(0).KEY_W)
     
+    @staticmethod
+    def jump_released():
+        return is_key_released(KeyboardKey(0).KEY_SPACE) or is_key_released(KeyboardKey(0).KEY_UP) or is_mouse_button_released(0) or is_key_released(KeyboardKey(0).KEY_W)
+
     @staticmethod
     def jump_down():
         return is_key_down(KeyboardKey(0).KEY_SPACE) or is_key_down(KeyboardKey(0).KEY_UP) or is_mouse_button_down(0) or is_key_down(KeyboardKey(0).KEY_W)
@@ -289,6 +293,10 @@ class Player(GameObj):
 
     BALL_SIZE = 30
 
+    WAVE_SPEED = 7
+    WAVE_COLOR = DARKBLUE
+    WAVE_THICKNESS = 15
+
     ROTATE_SPEED = 7
 
     def __repr__(self):
@@ -298,10 +306,14 @@ class Player(GameObj):
         return Player(clone_vec(self.start_pos))
     
     def set_mode(self, mode):
+        self.wave_points = []
         if mode not in self.modes:
             raise RuntimeError(f"Attempted to switch to mode '{mode}', which does not exist")
         self.current_mode = mode
         self.rotation = 0
+
+        if self.current_mode == "wave":
+            self.wave_points.append(clone_vec(self.position))
 
     def __init__(self, start_pos = Vector2(-400, 0)):
         super().__init__()
@@ -309,7 +321,8 @@ class Player(GameObj):
         self.modes = {
             "square": (self.square_logic, self.square_draw),
             "ship": (self.ship_logic, self.ship_draw),
-            "ball": (self.ball_logic, self.ball_draw)
+            "ball": (self.ball_logic, self.ball_draw),
+            "wave": (self.wave_logic, self.wave_draw)
         }
 
         self.current_mode = "square"
@@ -332,6 +345,8 @@ class Player(GameObj):
         self.orientation = 1
 
         self.halted = False
+
+        self.wave_points = []
     
     def manifested(self):
         get_game().make([AttemptCounter(clone_vec(self.position))])
@@ -374,6 +389,27 @@ class Player(GameObj):
     
     def postdraw(self):
         super().postdraw()
+
+        if self.current_mode == "wave":
+            last = self.wave_points[0]
+            for (p1, p2) in iter.pairwise(self.wave_points):
+                draw_line_ex(p1, p2, Player.WAVE_THICKNESS, Player.WAVE_COLOR)
+                if p2 is None:
+                    last = clone_vec(p1)
+                else:
+                    last = clone_vec(p2)
+            
+            if self.wantJump:
+                if self.orientation == 1:
+                    draw_line_ex(last, VecMath.add(self.position, Vector2(0, Player.HEIGHT)), Player.WAVE_THICKNESS, Player.WAVE_COLOR)
+                else:
+                    draw_line_ex(last, self.position, Player.WAVE_THICKNESS, Player.WAVE_COLOR)
+            else:
+                if self.orientation == 1:
+                    draw_line_ex(last, self.position, Player.WAVE_THICKNESS, Player.WAVE_COLOR)
+                else:
+                    draw_line_ex(last, VecMath.add(self.position, Vector2(0, Player.HEIGHT)), Player.WAVE_THICKNESS, Player.WAVE_COLOR)
+
         if DEBUG_MODE and self.area is not None:
             p = VecMath.floor_i(self.area.position)
             d = VecMath.floor_i(self.area.dimension)
@@ -404,7 +440,34 @@ class Player(GameObj):
         if self.wantJump and self.grounded:
             self.flip_gravity()
             self.position.y += 1 * self.orientation
-        
+    
+    def wave_add_point(self):
+        self.wave_points.append(clone_vec(self.position))
+    
+    def wave_add_point_offset(self):
+        self.wave_points.append(VecMath.add(self.position, Vector2(0, Player.HEIGHT)))
+
+    def wave_logic(self):
+        if self.orientation == 1 and not self.dead and self.position.y > Ground.ALTITUDE:
+            self.kill("slamming into the ground.")
+
+        if Input.jump_released():
+            if self.orientation == 1:
+                self.wave_add_point()
+            else:
+                self.wave_add_point_offset()
+        elif Input.jump_pressed():
+            if self.orientation == 1:
+                self.wave_add_point_offset()
+            else:
+                self.wave_add_point()
+
+        if self.wantJump:
+            self.velocity.y = -Player.WAVE_SPEED * self.orientation
+            self.rotation = -45 if self.orientation == 1 else -135
+        else:
+            self.velocity.y = Player.WAVE_SPEED * self.orientation
+            self.rotation = -135 if self.orientation == 1 else -45
 
     def logic(self):
         if self.dead: return
@@ -415,8 +478,9 @@ class Player(GameObj):
         
         self.modes[self.current_mode][0]()
         
-        self._update_velocity()
-        self.area.position = self.position # ensure that hitbox is adjusted to the visible position, can NOT clone the vector here because of timing & pointers 
+        if not self.dead:
+            self._update_velocity()
+            self.area.position = self.position # ensure that hitbox is adjusted to the visible position, can NOT clone the vector here because of timing & pointers 
         
         
     def _act_on_input(self):
@@ -505,6 +569,20 @@ class Player(GameObj):
         pos = VecMath.floor_i(pos)
 
         draw_circle(pos.x, pos.y, Player.BALL_SIZE, BLUE)
+    
+    def wave_draw(self):
+        pos = VecMath.add(self.position, Vector2(Player.WIDTH//2, Player.HEIGHT))
+
+        top = VecMath.sub(pos, Vector2(0, Spike.HEIGHT))
+        left = VecMath.add(top, Vector2(-Spike.MID, Spike.HEIGHT))
+        right = VecMath.add(top, Vector2(Spike.MID, Spike.HEIGHT))
+        
+        draw_triangle(
+            top,
+            left,
+            right,
+            BLUE
+        )
 
     def draw(self):
         if self.dead: return
@@ -1088,6 +1166,16 @@ class BallPortal(Portal):
     def apply(self):
         self.player.set_mode("ball")
 
+class WavePortal(Portal):
+    COLOR = Player.WAVE_COLOR
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.color = WavePortal.COLOR
+    
+    def apply(self):
+        self.player.set_mode("wave")
+
 class Item:
     def __init__(self, name):
         self.name = name
@@ -1311,6 +1399,16 @@ class BallPortalItem(Item):
     def draw_preview(self, where):
         draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, BallPortal.COLOR)
 
+class WavePortalItem(Item):
+    def __init__(self):
+        super().__init__("Wave Portal")
+    
+    def place(self, where, _rot):
+        return WavePortal(where)
+
+    def draw_preview(self, where):
+        draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, WavePortal.COLOR)
+
 class WinWallItem(Item):
     def __init__(self):
         super().__init__("Win Wall")
@@ -1361,7 +1459,9 @@ class EditorLevelManager(GameObj):
         self.items = [
             None, PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WinWallItem()
+            ShipPortalItem(), SquarePortalItem(), BallPortalItem(),
+            WavePortalItem(),
+            WinWallItem()
         ]
         self.held_item_index = 0
 
