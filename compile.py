@@ -16,9 +16,10 @@ APP_NAME = "geo"
 AS_MODULE = False
 PYTHON_CMD = "python3.11"
 
-args = sys.argv[1:]
-if args[0] == "module":
-    AS_MODULE = True
+if len(sys.argv) > 1:
+    args = sys.argv[1:]
+    if args[0] == "module":
+        AS_MODULE = True
 
 plat = platform.system()
 if plat == "Windows":
