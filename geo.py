@@ -42,6 +42,14 @@ class Input:
         return is_key_down(KeyboardKey(0).KEY_SPACE) or is_key_down(KeyboardKey(0).KEY_UP) or is_mouse_button_down(0) or is_key_down(KeyboardKey(0).KEY_W)
     
     @staticmethod
+    def right_pressed():
+        return is_key_pressed(KeyboardKey(0).KEY_RIGHT) or is_key_pressed(KeyboardKey(0).KEY_D)
+    
+    @staticmethod
+    def left_pressed():
+        return is_key_pressed(KeyboardKey(0).KEY_LEFT) or is_key_pressed(KeyboardKey(0).KEY_A)
+
+    @staticmethod
     def reset_level():
         return is_key_pressed(KeyboardKey(0).KEY_R)
     
@@ -2105,10 +2113,10 @@ class LevelSelectScreen(Level):
             return "cam_holder"
 
         def _move_input(self, lvls):
-            if self.index < len(lvls)-1 and is_key_pressed(KeyboardKey(0).KEY_D):
+            if self.index < len(lvls)-1 and Input.right_pressed():
                 self.moving_to = get_game().get_cam().target.x + 1_500
                 self.index += 1
-            elif self.index > 0 and is_key_pressed(KeyboardKey(0).KEY_A):
+            elif self.index > 0 and Input.left_pressed():
                 self.index -= 1
                 self.moving_to = get_game().get_cam().target.x - 1_500
 
