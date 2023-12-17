@@ -201,9 +201,6 @@ class Game:
     def set_level(self, lvl):
         self.reset()
         self.level = lvl
-        cam = self.get_cam()
-        if cam is not None:
-            cam.target = Vector2(0, 0)
         self.make(lvl.get())
         if self.get_player() is not None:
             if self.get_player().orientation == -1:
@@ -243,6 +240,14 @@ class Game:
             if i.get_tag() == name:
                 return i
         return None
+
+    def find_many_by_tag(self, name):
+        objs = []
+        for i in self.game_objects:
+            if i.get_tag() == name:
+                objs.append(i)
+
+        return objs
 
 class Level:
     CACHED_LEVEL = (None, None)
@@ -1689,7 +1694,10 @@ class EditorLevel(Level):
             super().__init__("Editor", EditorLevel.level_data)
         else:
             def get():
-                retrived = level_get()
+                if issubclass(type(level_get), Level):
+                    retrived = level_get.get()
+                else:
+                    retrived = level_get()
                 manager_exists = False
                 for i in retrived[:]:
                     if type(i) == Player or type(i) == Ground:
@@ -1842,15 +1850,30 @@ class LevelSelectScreen(Level):
             self.moving_to = None
             self.always_think = True
             self.index = 0
+            self.custombutton = None
+
+        def manifested(self):
+            get_game().get_cam().target = Vector2(0, 0)
+            self.custombutton = get_game().find_by_tag("customlevels_button")
+
+        def get_tag(self):
+            return "cam_holder"
+
+        def _move_input(self, lvls):
+            if self.index < len(lvls)-1 and is_key_pressed(KeyboardKey(0).KEY_D):
+                self.moving_to = get_game().get_cam().target.x + 1_500
+                self.index += 1
+            elif self.index > 0 and is_key_pressed(KeyboardKey(0).KEY_A):
+                self.index -= 1
+                self.moving_to = get_game().get_cam().target.x - 1_500
 
         def logic(self):
             if self.moving_to is None:
-                if self.index < len(LevelSelectScreen.LEVELS)-1 and is_key_pressed(KeyboardKey(0).KEY_D):
-                    self.moving_to = get_game().get_cam().target.x + 1_500
-                    self.index += 1
-                elif self.index > 0 and is_key_pressed(KeyboardKey(0).KEY_A):
-                    self.index -= 1
-                    self.moving_to = get_game().get_cam().target.x - 1_500
+                if self.custombutton.is_toggled():
+                    if len(self.custombutton.levels) != 0:
+                        self._move_input(self.custombutton.levels)
+                else:
+                    self._move_input(LevelSelectScreen.LEVELS)
             else:
                 cam = get_game().get_cam()
 
@@ -1862,18 +1885,31 @@ class LevelSelectScreen(Level):
                 elif self.moving_to+10_000 > cam.target.x:
                     cam.target.x += 100
 
-    class EditorCheckBox(GameObj):
+    class Button(GameObj):
+        def __init__(self, pos, dim):
+            super().__init__()
+            self.position = pos
+            self.area = Rect(
+                clone_vec(pos),
+                dim
+            )
+        
+        def logic(self):
+            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
+                self.apply()
+        
+        def apply(self):
+            pass
+
+    class EditorCheckBox(Button):
         WIDTH = 100
         HEIGHT = 100
         CIRCLE_RAD = 35
 
         def __init__(self):
-            super().__init__()
+            super().__init__(Vector2(), Vector2(LevelSelectScreen.EditorCheckBox.WIDTH, LevelSelectScreen.EditorCheckBox.HEIGHT))
             self.checked = False
-            self.area = Rect(
-                clone_vec(self.position),
-                Vector2(LevelSelectScreen.EditorCheckBox.WIDTH, LevelSelectScreen.EditorCheckBox.HEIGHT)
-            )
         
         def get_tag(self):
             return "editor_check"
@@ -1882,12 +1918,12 @@ class LevelSelectScreen(Level):
             return self.checked
         
         def logic(self):
+            super().logic()
             self.position = VecMath.add(get_game().get_cam().target, Vector2(-400, 210))
             self.area.position = clone_vec(self.position)
-
-            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
-                self.checked = not self.checked
+        
+        def apply(self):
+            self.checked = not self.checked
 
         def draw(self):
             pos = VecMath.floor_i(self.position)
@@ -1898,45 +1934,117 @@ class LevelSelectScreen(Level):
 
             draw_text("Open in Editor", pos.x+110, pos.y+35, 34, BLACK)
 
-    class LevelButton(GameObj):
+    class LevelButton(Button):
         WIDTH = 1_000
         HEIGHT = 500
 
-        def __init__(self, pos, lvl):
-            super().__init__()
-            self.position = pos
+        def __init__(self, pos, lvl, color):
+            super().__init__(pos, Vector2(LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT))
             self.level = lvl
-            self.area = Rect(
-                clone_vec(self.position),
-                Vector2(LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT)
-            )
+            self.color = color
         
-        def logic(self):
-            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-            
-            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
-                desired_level = self.level
-                if get_game().find_by_tag("editor_check").is_toggled():
-                    desired_level = EditorLevel(self.level.level_data)
-                get_game().defer(lambda: get_game().set_level(desired_level))
+        def apply(self):
+            desired_level = self.level
+            if get_game().find_by_tag("editor_check").is_toggled():
+                desired_level = EditorLevel(self.level)
+            get_game().get_cam().target = Vector2(0, 0)
+            get_game().defer(lambda: get_game().set_level(desired_level))
 
         def draw(self):
             pos = VecMath.floor_i(self.position)
-            draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT), 0.5, 50, DARKGRAY)
+            draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT), 0.5, 50, self.color)
 
             draw_text(self.level.name, pos.x+500-(measure_text(self.level.name, 54)//2), pos.y+200, 54, WHITE)
+
+    class CustomLevels(Button):
+        WIDTH = 200
+        HEIGHT = 100
+
+        def __init__(self):
+            super().__init__(Vector2(), Vector2(LevelSelectScreen.CustomLevels.WIDTH, LevelSelectScreen.CustomLevels.HEIGHT))
+            self.toggled = False
+            self.text = "Custom Levels"
+            self.levels = []
+        
+        def is_toggled(self):
+            return self.toggled
+
+        def get_tag(self):
+            return "customlevels_button"
+
+        def find_custom_level_files(self):
+            total_files = []
+            for root, dirs, files in os.walk("./custom_levels"):
+                for file in files:
+                    if os.path.splitext(file)[1] == ".level": # splittext()[1] is the file extension
+                        path = os.path.join(root, file)
+                        total_files.append(path)
+            
+            return total_files
+
+        def load_custom_level_buttons(self):
+            self.levels.clear()
+            files = self.find_custom_level_files()
+            print("loading", files)
+
+            x = -500
+            for i in files:
+                level = Level.from_file(i)
+                self.levels.append(level)
+
+                button = LevelSelectScreen.LevelButton(Vector2(x, 700), level, RED)
+                button.get_tag = lambda: "custom_level_button"
+
+                x += 1_500
+                get_game().make([button])
+
+        def apply(self):
+            self.toggled = not self.toggled
+            if self.toggled:
+                self.text = "Normal Levels"
+                get_game().get_cam().target.x = 0
+                get_game().get_cam().target.y = 1_000
+                
+                self.load_custom_level_buttons()
+            else:
+                get_game().get_cam().target.x = 0
+                get_game().get_cam().target.y = 0
+                self.text = "Custom Levels"
+                for i in get_game().find_many_by_tag("custom_level_button"):
+                    get_game().destroy([i])
+            
+            cam_holder = get_game().find_by_tag("cam_holder")
+            cam_holder.index = 0
+        
+        def logic(self):
+            super().logic()
+            self.position = VecMath.add(get_game().get_cam().target, Vector2(400, 210))
+            self.area.position = clone_vec(self.position)
+
+        def draw(self):
+            pos = VecMath.floor_i(self.position)
+            draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.CustomLevels.WIDTH, LevelSelectScreen.CustomLevels.HEIGHT), 0.5, 50, DARKGRAY)
+
+            draw_text(self.text, pos.x+210-(measure_text(self.text, 54)//2), pos.y+35, 24, WHITE)
+
 
     def __init__(self):
         super().__init__("Level Select Screen", LevelSelectScreen.level_data)
     
     @staticmethod
-    def level_data():
-        objs = [LevelSelectScreen.LevelSelectCamera(), LevelSelectScreen.EditorCheckBox()]
-
+    def get_level_buttons():
+        buttons = []
         x = -500
         for level in LevelSelectScreen.LEVELS:
-            objs.append(LevelSelectScreen.LevelButton(Vector2(x, -300), level))
+            buttons.append(LevelSelectScreen.LevelButton(Vector2(x, -300), level, DARKGRAY))
             x += 1_500
+        return buttons
+    
+    @staticmethod
+    def level_data():
+        objs = [LevelSelectScreen.LevelSelectCamera(), LevelSelectScreen.EditorCheckBox(), LevelSelectScreen.CustomLevels()]
+
+        objs += LevelSelectScreen.get_level_buttons()
         
         return objs
 
@@ -1946,18 +2054,20 @@ def main():
     global win_inited
 
     game = Game()
-    game.set_level(LevelSelectScreen()) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
     set_target_fps(60)
     set_exit_key(-1)
 
+
     logo = load_image("textures/Geometry_Splash_Logo.png")
     set_window_icon(logo)
     
     cam = Camera2D(Vector2(screen_mid[0], screen_mid[1]), Vector2(0, 0), 0, 1)
     game.camera = cam
+
+    game.set_level(LevelSelectScreen()) # SET LEVEL
 
     last_frame = get_time()
     delta = 1 / 60
