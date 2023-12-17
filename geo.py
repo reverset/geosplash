@@ -1493,7 +1493,8 @@ class EditorLevelPreview(GameObj):
                 objs.append(self.editor)
                 return objs
 
-            get_game().defer(lambda: get_game().set_level(EditorLevel(get_editor_objs)))
+            l = Level(get_game().get_level().name, get_editor_objs)
+            get_game().defer(lambda: get_game().set_level(EditorLevel(l)))
 
 class EditorLevelManager(GameObj):
     ROUND_WIDTH = -1
@@ -1671,7 +1672,7 @@ class EditorLevelManager(GameObj):
             print("SAVED LEVEL CODE: -=-=-=-=-=")
             print(self.saved)
             print("LEVEL CODE ^^^^^^^-=-=-=-=-=")
-            test_level = Level("Preview Level", self.get_saved)
+            test_level = Level(get_game().get_level().name, self.get_saved)
             get_game().defer(lambda: get_game().set_level(test_level))
 
         pos = EditorLevelManager.get_desired_mouse_pos()
