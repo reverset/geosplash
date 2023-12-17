@@ -667,7 +667,7 @@ class Ground(GameObj):
             if self.player.orientation == 1:
                 self.player.grounded_y = self.position.y
             else:
-                if not self.player.dead and self.player.position.y > Ground.ALTITUDE:
+                if not self.player.dead and self.player.position.y+Player.HEIGHT > Ground.ALTITUDE:
                     self.player.kill("Ground")
                 self.player.grounded_y = Ground.REVERSE_ALTITUDE
         self.position.x = get_game().get_cam().target.x - 1_000
@@ -1507,7 +1507,7 @@ class EditorLevelManager(GameObj):
         def __init__(self):
             super().__init__()
             self.elements = [
-                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, banned=[KeyboardKey(0).KEY_BACKSLASH, KeyboardKey(0).KEY_SLASH], callback=self.do_save),
+                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, banned=[KeyboardKey(0).KEY_BACKSLASH, KeyboardKey(0).KEY_SLASH], placeholder="Enter Name", callback=self.do_save),
                 UI.BetterButton(Vector2(screen_width//4+100, 400), Vector2(500, 70), callback=self.do_save),
                 UI.TextDisplay(Vector2(screen_width//2-50, 410), "SAVE", 54, WHITE)
             ]
@@ -1977,7 +1977,7 @@ class UI:
             draw_rectangle_rounded(Rectangle(pos.x, pos.y, dim.x, dim.y), 0.5, 50, self.color)
     
     class TextField(BetterButton):
-        def __init__(self, pos, dim, font_size, multiline=False, max_per_line=12, callback=lambda: None, banned=None):
+        def __init__(self, pos, dim, font_size, multiline=False, max_per_line=12, callback=lambda: None, banned=None, placeholder=""):
             super().__init__(pos, dim)
             self.selected = False
             self.text = ""
@@ -1990,6 +1990,7 @@ class UI:
             self.callback_enter = callback
 
             self.banned = banned
+            self.placeholder = placeholder
         
         def apply(self):
             self.selected = True
@@ -2040,7 +2041,10 @@ class UI:
             super().ui_draw()
             pos = VecMath.floor_i(self.position)
 
-            draw_text(self.text, pos.x+100, pos.y+50, self.font_size, WHITE)
+            if self.text == "":
+                draw_text(self.placeholder, pos.x+100, pos.y+50, self.font_size, BLACK)
+            else:
+                draw_text(self.text, pos.x+100, pos.y+50, self.font_size, WHITE)
 
             if self.selected:
                 self.cursor.x = pos.x+100 + measure_text(self.text, self.font_size)
