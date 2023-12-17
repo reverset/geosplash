@@ -798,7 +798,7 @@ class Tile(GameObj):
                         self.player.velocity.y = 1 * self.player.orientation
                     else:
                         self.player.kill("bonked on Tile")
-                    break
+                    continue
                 if self.player.orientation == 1:
                     if i.y < self.position.y + ground_threshold:
                         self.player.grounded_y = self.area.position.y + bump
