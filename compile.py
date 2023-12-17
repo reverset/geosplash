@@ -1,6 +1,7 @@
 import subprocess
 import os
 import platform
+import sys
 
 from zipfile import ZipFile
 
@@ -13,6 +14,11 @@ For MacOS, make sure you have imageio installed (pip install imageio)
 
 APP_NAME = "geo"
 AS_MODULE = False
+PYTHON_CMD = "python3.11"
+
+args = sys.argv[1:]
+if args[0] == "module":
+    AS_MODULE = True
 
 plat = platform.system()
 if plat == "Windows":
@@ -22,7 +28,6 @@ elif plat == "Linux":
 elif plat == "Darwin":
     COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py --macos-app-icon=./icons/Geometry_Splash_Logo.png"
 
-PYTHON_CMD = "python3.11"
 
 def get_all_in_folder(folder):
     f = []
