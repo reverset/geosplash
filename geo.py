@@ -275,19 +275,22 @@ class Level:
             print("Level loaded from file cache!")
             return Level.CACHED_LEVEL[1]
         
-        print("Loading level from file ...")
-        with open(file, "r") as f:
-            lines = f.readlines()
-            
-            name = lines[0]
-            code = lines[1]
+        def level_data():
+            print("Loading level from file ...")
+            with open(file, "r") as f: # should probably only do this when the level data is actually requested
+                lines = f.readlines()
+                
+                name = lines[0]
+                code = lines[1]
 
-            def level_data():
-                c = eval(code)
+                c = eval(code) # yes I know this is a vulnerability, I'm not going to fix it since this is just a big test.
+                Level.CACHED_LEVEL = (file, Level(name, lambda: eval(code)))
                 return c
+            
+        with open(file, "r") as f:
+            name = f.readline()
             l = Level(name, level_data)
-            Level.CACHED_LEVEL = (file, l)
-            return l
+        return l
 
     def get(self):
         return self.func()
@@ -1511,6 +1514,7 @@ class EditorLevelManager(GameObj):
             self.visible = True
             self.elements[0].text = get_game().get_level().name
             self.done = False
+            self.always_think = True
         
         def destroyed(self):
             self.done = True
@@ -1940,6 +1944,7 @@ class UI:
                 clone_vec(pos),
                 dim
             )
+            self.always_think = True
             self.callback = callback
 
         def is_ui_element(self):
@@ -2048,6 +2053,7 @@ class UI:
             self.text = text
             self.font_size = font_size
             self.color = color
+            self.always_think = True
         
         def is_ui_element(self):
             return True
