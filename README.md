@@ -1,5 +1,6 @@
 # Geometry Splash
-A clone of the popular game 'Geometry Dash' created purely for educational purposes.
+A clone of the popular game 'Geometry Dash' created purely for educational purposes. <br>
+If you want to play an actually fun game, you should probably go play the real Geometry Dash.
 
 ![Geometry Splash logo](icons/Geometry_Splash_Logo.png)
 

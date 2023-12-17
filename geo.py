@@ -201,6 +201,9 @@ class Game:
     def set_level(self, lvl):
         self.reset()
         self.level = lvl
+        cam = self.get_cam()
+        if cam is not None:
+            cam.target = Vector2(0, 0)
         self.make(lvl.get())
         if self.get_player() is not None:
             if self.get_player().orientation == -1:
@@ -493,6 +496,9 @@ class Player(GameObj):
         if self.dead: return
         if self.halted: return
         
+        if is_key_released(KeyboardKey(0).KEY_ESCAPE):
+            get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+
         self.velocity.x = 5.5 # horizontal speed
         self._act_on_input()
         
@@ -1544,6 +1550,9 @@ class EditorLevelManager(GameObj):
         self.pick_item()
         self.cam_move()
 
+        if is_key_released(KeyboardKey(0).KEY_ESCAPE):
+            get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+
         if is_key_pressed(KeyboardKey(0).KEY_T):
             objs = [EditorLevelPreview(self), Player()]
             self.save_objs()
@@ -1588,16 +1597,19 @@ class EditorLevelManager(GameObj):
             except:
                 sys.stderr.write("Invalid level data! Please ensure you copied the right stuff\n")
             else:
-                for i in objs[:]:
-                    if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
-                        objs.remove(i)
-                objs.insert(0, EditorLevelManager())
+                if type(objs) is not list:
+                    sys.stderr.write("Evaluated 'level' is not a list and therefore, not a level.\n")
+                else: 
+                    for i in objs[:]:
+                        if type(i) in [Player, EditorLevelPreview, EditorLevelManager]:
+                            objs.remove(i)
+                    objs.insert(0, EditorLevelManager())
 
-                def level_data():
-                    return objs
-                l = Level("Loaded Level", level_data)
-                get_game().defer(lambda: get_game().set_level(l))
-                print("Loaded level!")
+                    def level_data():
+                        return objs
+                    l = Level("Loaded Level", level_data)
+                    get_game().defer(lambda: get_game().set_level(l))
+                    print("Loaded level!")
 
         if is_key_pressed(KeyboardKey(0).KEY_B):
             global DEBUG_MODE
@@ -1814,51 +1826,127 @@ class RadioAngerLevel(Level):
     def level_data():
         return Level.from_file("levels/radioanger.level").get()
 
+class LevelSelectScreen(Level):
+    LEVELS = [
+        BlankLevel(),
+        TestLevel(), 
+        HardLevel(), 
+        ShipLevel(), 
+        BallWaveLevel(),
+        RadioAngerLevel()
+    ]
+
+    class LevelSelectCamera(GameObj):
+        def __init__(self):
+            super().__init__()
+            self.moving_to = None
+            self.always_think = True
+            self.index = 0
+
+        def logic(self):
+            if self.moving_to is None:
+                if self.index < len(LevelSelectScreen.LEVELS)-1 and is_key_pressed(KeyboardKey(0).KEY_D):
+                    self.moving_to = get_game().get_cam().target.x + 1_500
+                    self.index += 1
+                elif self.index > 0 and is_key_pressed(KeyboardKey(0).KEY_A):
+                    self.index -= 1
+                    self.moving_to = get_game().get_cam().target.x - 1_500
+            else:
+                cam = get_game().get_cam()
+
+                if abs(self.moving_to - cam.target.x) < 1_000:
+                    cam.target.x = self.moving_to
+                    self.moving_to = None
+                elif self.moving_to < cam.target.x:
+                    cam.target.x -= 100
+                elif self.moving_to+10_000 > cam.target.x:
+                    cam.target.x += 100
+
+    class EditorCheckBox(GameObj):
+        WIDTH = 100
+        HEIGHT = 100
+        CIRCLE_RAD = 35
+
+        def __init__(self):
+            super().__init__()
+            self.checked = False
+            self.area = Rect(
+                clone_vec(self.position),
+                Vector2(LevelSelectScreen.EditorCheckBox.WIDTH, LevelSelectScreen.EditorCheckBox.HEIGHT)
+            )
+        
+        def get_tag(self):
+            return "editor_check"
+
+        def is_toggled(self):
+            return self.checked
+        
+        def logic(self):
+            self.position = VecMath.add(get_game().get_cam().target, Vector2(-400, 210))
+            self.area.position = clone_vec(self.position)
+
+            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
+                self.checked = not self.checked
+
+        def draw(self):
+            pos = VecMath.floor_i(self.position)
+            draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.EditorCheckBox.WIDTH, LevelSelectScreen.EditorCheckBox.HEIGHT), 0.5, 50, DARKGRAY)
+
+            if self.checked:
+                draw_circle(pos.x+LevelSelectScreen.EditorCheckBox.WIDTH//2, pos.y+LevelSelectScreen.EditorCheckBox.HEIGHT//2, LevelSelectScreen.EditorCheckBox.CIRCLE_RAD, GREEN)
+
+            draw_text("Open in Editor", pos.x+110, pos.y+35, 34, BLACK)
+
+    class LevelButton(GameObj):
+        WIDTH = 1_000
+        HEIGHT = 500
+
+        def __init__(self, pos, lvl):
+            super().__init__()
+            self.position = pos
+            self.level = lvl
+            self.area = Rect(
+                clone_vec(self.position),
+                Vector2(LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT)
+            )
+        
+        def logic(self):
+            mouse = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+            
+            if is_mouse_button_released(0) and Rect.check_collision_with_point(self.area, mouse):
+                desired_level = self.level
+                if get_game().find_by_tag("editor_check").is_toggled():
+                    desired_level = EditorLevel(self.level.level_data)
+                get_game().defer(lambda: get_game().set_level(desired_level))
+
+        def draw(self):
+            pos = VecMath.floor_i(self.position)
+            draw_rectangle_rounded(Rectangle(pos.x, pos.y, LevelSelectScreen.LevelButton.WIDTH, LevelSelectScreen.LevelButton.HEIGHT), 0.5, 50, DARKGRAY)
+
+            draw_text(self.level.name, pos.x+500-(measure_text(self.level.name, 54)//2), pos.y+200, 54, WHITE)
+
+    def __init__(self):
+        super().__init__("Level Select Screen", LevelSelectScreen.level_data)
+    
+    @staticmethod
+    def level_data():
+        objs = [LevelSelectScreen.LevelSelectCamera(), LevelSelectScreen.EditorCheckBox()]
+
+        x = -500
+        for level in LevelSelectScreen.LEVELS:
+            objs.append(LevelSelectScreen.LevelButton(Vector2(x, -300), level))
+            x += 1_500
+        
+        return objs
+
 win_inited = False
 def main():
     global game
     global win_inited
-    
-    levels = {
-        "blank": BlankLevel(),
-        "test": TestLevel(), 
-        "hard": HardLevel(), 
-        "ship": ShipLevel(), 
-        "ballwave": BallWaveLevel(),
-        "radio anger": RadioAngerLevel()
-    }
-
-    print("Available levels:")
-    for i in levels.keys():
-        print(f"=> {i}")
-    print("You may type 'exit' to exit.")
-
-    looping = True
-    while looping:
-        desired_level = input("Please type the level name you'd like to play: ")
-        if desired_level == "":
-            desired_level = levels["blank"]
-            looping = False
-        elif desired_level == "exit":
-            return
-        else:
-            try:
-                desired_level = levels[desired_level]
-                looping = False
-            except KeyError:
-                print("Invalid level name! Please try again.")
-    
-    if type(desired_level) is not BlankLevel:
-        editor_q = input("Would you like to open this level in editor mode? [Y]/n: ").lower()
-        if editor_q == "no" or editor_q == "n":
-            pass
-        else:
-            desired_level = EditorLevel(desired_level.level_data)
-    else:
-        desired_level = EditorLevel(desired_level.level_data)
 
     game = Game()
-    game.set_level(desired_level) # SET LEVEL
+    game.set_level(LevelSelectScreen()) # SET LEVEL
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")

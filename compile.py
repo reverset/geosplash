@@ -40,7 +40,7 @@ def get_main_executable():
         return APP_NAME + ".app"
 
 def get_relevant_files():
-    files = [get_main_executable()]
+    files = [get_main_executable(), "./custom_levels/"]
     files += get_all_in_folder("./textures")
     files += get_all_in_folder("./levels")
     
