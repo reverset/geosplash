@@ -412,6 +412,8 @@ class Player(GameObj):
     
     def kill(self, reason):
         if self.halted: return
+        if self.dead: return
+
         global _attempts
         _attempts += 1
         print("Killed by " + reason)
