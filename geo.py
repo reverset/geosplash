@@ -919,6 +919,11 @@ class Orb(GameObj):
         self.border_color = Color(0, 0, 0, 255)
         self.player = None
         self.already_tapped = False
+
+        self.area = Rect(
+            clone_vec(self.position),
+            Vector2(Orb.RADIUS/2, Orb.RADIUS/2)
+        )
     
     def tapped(self):
         pass
@@ -1072,6 +1077,11 @@ class WinWall(GameObj):
         self.player = None
         self.passed = False
 
+        self.area = Rect(
+            Vector2(self.position.x, WinWall.Y_POS),
+            Vector2(WinWall.WIDTH, WinWall.HEIGHT)
+        )
+
         self.velocity = Vector2(0, 0)
         self.rot_vel = 0
 
@@ -1130,6 +1140,11 @@ class PlayerSpawn(GameObj):
         self.position = pos
         self.waiting = True
         self.player = None
+
+        self.area = Rect(
+            clone_vec(self.position),
+            Vector2(PlayerSpawn.RADIUS/2, PlayerSpawn.RADIUS/2)
+        )
     
     def destroy(self):
         get_game().defer(lambda: get_game().destroy([self]))
@@ -1206,6 +1221,7 @@ class ShipPortal(Portal):
 
     def apply(self):
         self.player.set_mode("ship")
+
 class SquarePortal(Portal):
     COLOR = ORANGE
 
@@ -1743,21 +1759,13 @@ class EditorLevelManager(GameObj):
             actual.y -= 5
 
             if is_mouse_button_down(1):
-                destroyed = False
+                point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
                 for i in get_game().game_objects:
-                    if i.position.x == actual.x and i.position.y == actual.y:
+                    if i.area is None: continue
+
+                    if Rect.check_collision_with_point(i.area, point):
                         get_game().game_objects.remove(i)
-                        destroyed = True
                         break
-
-                if not destroyed:
-                    point = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
-                    for i in get_game().game_objects:
-                        if i.area is None: continue
-
-                        if Rect.check_collision_with_point(i.area, point):
-                            get_game().game_objects.remove(i)
-                            break
 
             if is_mouse_button_pressed(0):
                 block = self.held_item.place(actual, self.rotation)
