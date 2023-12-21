@@ -2347,7 +2347,7 @@ def main():
         
         # Drawing
         begin_drawing()
-        clear_background(WHITE)
+        clear_background(Color(200, 200, 200))
         
         begin_mode_2d(cam)
 
@@ -2361,8 +2361,8 @@ def main():
 
             desired_cam_x = player.position.x
             if player.halted:
-                desired_cam_x = cam.target.x
-            cam.target = Vector2(desired_cam_x, desired_cam_y)
+                desired_cam_x = get_game().find_by_tag("Win").position.x - 400
+            cam.target = Vector2(desired_cam_x+200, desired_cam_y)
 
         uis = set()
         ground = None
