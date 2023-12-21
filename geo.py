@@ -6,7 +6,7 @@ Created on Tue Nov 14 13:32:55 2023
 @author: Sea bass Rueda
 """
 
-import itertools as iter
+import itertools as itert
 
 from pyray import *
 
@@ -441,7 +441,7 @@ class Player(GameObj):
 
         if self.current_mode == "wave":
             last = self.wave_points[0]
-            for (p1, p2) in iter.pairwise(self.wave_points):
+            for (p1, p2) in itert.pairwise(self.wave_points):
                 draw_line_ex(p1, p2, Player.WAVE_THICKNESS, Player.WAVE_COLOR)
                 if p2 is None:
                     last = clone_vec(p1)
