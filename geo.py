@@ -105,7 +105,7 @@ class Rect:
         return Rect(clone_vec(self.position), clone_vec(self.dimension))
     
     def vertices(self):
-        up_left = self.position
+        up_left = clone_vec(self.position)
         up_right = VecMath.add(self.position, Vector2(self.dimension.x, 0))
         bot_right = VecMath.add(self.position, Vector2(self.dimension.x, self.dimension.y))
         bot_left = VecMath.add(self.position, Vector2(0, self.dimension.y))
@@ -122,7 +122,6 @@ class Rect:
 
     def __repr__(self):
         return f"Rect(pos=V2({self.position.x}, {self.position.y}), dim=V2({self.dimension.x}, {self.dimension.y}))"
-        
         
 
 def clone_vec(vec):
