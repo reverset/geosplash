@@ -1791,7 +1791,7 @@ class EditorLevelManager(GameObj):
             text = self.held_item.name
             draw_text(text, cam_pos.x - measure_text(text, 24)//2, cam_pos.y-cam_off.y+5, 24, BLACK)
 
-        draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x, cam_pos.y - cam_off.y, 54, BLACK )
+        draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x+10, cam_pos.y - cam_off.y, 54, BLACK )
         draw_fps(cam_pos.x + cam_off.x - 100, cam_pos.y - cam_off.y + 20)
 
         if self.held_item is not None:
