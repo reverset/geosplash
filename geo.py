@@ -1599,6 +1599,13 @@ class EditorLevelManager(GameObj):
     
     class HUD(GameObj):
 
+        def __init__(self):
+            super().__init__()
+            self.always_think = True
+
+        def get_tag(self):
+            return "editor_hud"
+
         def manifested(self):
             self.manager = get_game().find_by_tag("editor_manager")
 
@@ -1652,6 +1659,11 @@ class EditorLevelManager(GameObj):
 
         self.save_window = None
     
+    def manifested(self):
+        if get_game().find_by_tag("editor_hud") is None:
+            self.hud = EditorLevelManager.HUD()
+            get_game().make([self.hud])
+
     def get_saved(self):
         return [o.clone() for o in self.saved]
 
