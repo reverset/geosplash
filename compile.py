@@ -23,11 +23,11 @@ if len(sys.argv) > 1:
 
 plat = platform.system()
 if plat == "Windows":
-    COMMAND = "nuitka --onefile --windows-icon-from-ico=./icons/Geometry_Splash_Logo.ico ./geo.py"
+    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.ico --distpath=."
 elif plat == "Linux":
-    COMMAND = "nuitka --onefile --linux-icon=./icons/Geometry_Splash_Logo.png ./geo.py -o geo"
+    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
 elif plat == "Darwin":
-    COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py --macos-app-icon=./icons/Geometry_Splash_Logo.png"
+    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
 
 
 def get_all_in_folder(folder):
@@ -54,13 +54,10 @@ def get_relevant_files():
     
     return files
 
-if AS_MODULE:
+if AS_MODULE: # remove me
     output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
 else:
     output = subprocess.run(COMMAND, shell=True)
-
-if output.stderr is not None and "FATAL" in output.stderr.decode('utf-8'): # FIXME
-    raise RuntimeError("Zipping prevented... see nuitka errors")
 
 
 print("Zipping the following files:")

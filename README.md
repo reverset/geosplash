@@ -8,11 +8,14 @@ If you want to play an actually fun game, you should probably go play the real G
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Nuitka) (Windows, Linux, and MacOS!)
+## To Compile (Using Pyinstaller) Only tested on Windows!
 ### Tested with Python 3.11
 ```console
 $ python3 ./compile.py
 ```
+
+## Alternatively, you can use Nuitka to compile it but keep the following notes in mind.
+
 ### MacOS NOTE:
 - Ensure you have `pip install imageio`, so that the icon is setup properly on the executable.
 
