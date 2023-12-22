@@ -25,9 +25,9 @@ plat = platform.system()
 if plat == "Windows":
     COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.ico --distpath=."
 elif plat == "Linux":
-    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
+    COMMAND = "pyinstaller --onefile ./geo.py --distpath=." # icon not supported on linux :(
 elif plat == "Darwin":
-    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
+    COMMAND = "pyinstaller --windowed --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
 
 
 def get_all_in_folder(folder):

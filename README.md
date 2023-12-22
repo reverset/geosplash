@@ -8,7 +8,7 @@ If you want to play an actually fun game, you should probably go play the real G
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Pyinstaller) Only tested on Windows!
+## To Compile (Using Pyinstaller) Tested on Windows & Linux
 ### Tested with Python 3.11
 ```console
 $ python3 ./compile.py
