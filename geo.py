@@ -2598,12 +2598,12 @@ def main():
 
         if freeze_loc is None and player is not None:
             if not desired_cam_y_locked:
-                desired_cam_y = 0
+                desired_cam_y = lerp(cam.target.y, 0, 0.3)
 
                 if not player.halted and player.position.y < -200:
-                    desired_cam_y = VecMath.lerp(Vector2(cam.target.x, cam.target.y + 200), player.position, 0.5).y # FIXME lmao
+                    desired_cam_y = lerp(cam.target.y, player.position.y, 0.15)
 
-            desired_cam_x = lerp(cam.target.x, player.position.x+200, 0.5)
+            desired_cam_x = lerp(cam.target.x, player.position.x+200, 0.15)
 
             if player.halted:
                 desired_cam_x = lerp(cam.target.x, get_game().find_by_tag("Win").position.x - 400, 0.3)
