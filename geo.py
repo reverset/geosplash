@@ -1596,6 +1596,33 @@ class EditorLevelManager(GameObj):
             else:
                 self.elements[0].selected = False
                 draw_text("Saving ...", screen_width//2, 100, 44, BLACK)
+    
+    class HUD(GameObj):
+
+        def manifested(self):
+            self.manager = get_game().find_by_tag("editor_manager")
+
+        def is_ui_element(self):
+            return True
+        
+        def ui_draw(self):
+            if self.manager is None:
+                self.manager = get_game().find_by_tag("editor_manager")
+                return
+
+            cam = get_game().get_cam()
+
+            if self.manager.held_item is not None:
+                text = self.manager.held_item.name
+                draw_text(text, screen_width//2 - measure_text(text, 24)//2, 5, 24, BLACK)
+
+            draw_text(f"{cam.target.x}, {cam.target.y}", 10, 5, 54, BLACK )
+            draw_fps(screen_width - 100, 20)
+
+            if self.manager.esc_tick > 0:
+                text = "exiting ... (hold)"
+                draw_text(text, screen_width//2 - measure_text(text, 34)//2, 200, 34, BLACK)
+
 
     def get_tag(self):
         return "editor_manager"
@@ -1615,6 +1642,9 @@ class EditorLevelManager(GameObj):
 
         self.held_item = self.items[self.held_item_index]
         self.rotation = 0
+
+        self.hud = EditorLevelManager.HUD()
+        get_game().make([self.hud])
 
         self.saved = []
         
@@ -1803,21 +1833,6 @@ class EditorLevelManager(GameObj):
                 
     
     def draw(self):
-        cam = get_game().get_cam()
-        cam_pos = VecMath.floor_i(cam.target)
-        cam_off = VecMath.floor_i(cam.offset)
-
-        if self.held_item is not None:
-            text = self.held_item.name
-            draw_text(text, cam_pos.x - measure_text(text, 24)//2, cam_pos.y-cam_off.y+5, 24, BLACK)
-
-        draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x+10, cam_pos.y - cam_off.y, 54, BLACK )
-        draw_fps(cam_pos.x + cam_off.x - 100, cam_pos.y - cam_off.y + 20)
-
-        if self.esc_tick > 0:
-            text = "exiting ... (hold)"
-            draw_text(text, cam_pos.x - measure_text(text, 34)//2, cam_pos.y-cam_off.y+200, 34, BLACK)
-
         if self.held_item is not None:
             pos = EditorLevelManager.get_desired_mouse_pos()
             actual = self.held_item.offset(pos)
