@@ -1606,6 +1606,8 @@ class EditorLevelManager(GameObj):
 
         self.saved = []
         
+        self.esc_tick = 0
+
         self.save_window = None
     
     def get_saved(self):
@@ -1685,8 +1687,14 @@ class EditorLevelManager(GameObj):
             self.save_window = EditorLevelManager.SaveUIGroup()
             get_game().make([self.save_window])
 
-        if is_key_released(KeyboardKey(0).KEY_ESCAPE):
-            get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+        if is_key_down(KeyboardKey(0).KEY_ESCAPE):
+            self.esc_tick += 1 * get_frame_time()
+            if self.esc_tick > 3:
+                self.esc_tick = 0
+                get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+
+        elif is_key_released(KeyboardKey(0).KEY_ESCAPE):
+            self.esc_tick = 0
 
         self.pick_item()
         self.cam_move()
@@ -1793,6 +1801,10 @@ class EditorLevelManager(GameObj):
 
         draw_text(f"{cam_pos.x}, {cam_pos.y}", cam_pos.x - cam_off.x+10, cam_pos.y - cam_off.y, 54, BLACK )
         draw_fps(cam_pos.x + cam_off.x - 100, cam_pos.y - cam_off.y + 20)
+
+        if self.esc_tick > 0:
+            text = "exiting ... (hold)"
+            draw_text(text, cam_pos.x - measure_text(text, 34)//2, cam_pos.y-cam_off.y+200, 34, BLACK)
 
         if self.held_item is not None:
             pos = EditorLevelManager.get_desired_mouse_pos()
