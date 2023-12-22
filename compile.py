@@ -15,11 +15,14 @@ For MacOS, make sure you have imageio installed (pip install imageio)
 APP_NAME = "geo"
 AS_MODULE = False
 PYTHON_CMD = "python3.11"
+ZIP_ONLY = False
 
 if len(sys.argv) > 1:
     args = sys.argv[1:]
     if args[0] == "module":
         AS_MODULE = True
+    elif args[0] == "zip":
+        ZIP_ONLY = True
 
 plat = platform.system()
 if plat == "Windows":
@@ -54,10 +57,11 @@ def get_relevant_files():
     
     return files
 
-if AS_MODULE: # remove me
-    output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
-else:
-    output = subprocess.run(COMMAND, shell=True)
+if not ZIP_ONLY:
+    if AS_MODULE: # remove me probably
+        output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
+    else:
+        output = subprocess.run(COMMAND, shell=True)
 
 
 print("Zipping the following files:")
