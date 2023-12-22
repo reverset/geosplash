@@ -79,6 +79,10 @@ class VecMath:
         return Vector2(math.floor(v1.x), math.floor(v1.y))
     
     @staticmethod
+    def int(v1):
+        return Vector2(int(v1.x), int(v1.y))
+    
+    @staticmethod
     def floor_i(v1):
         return Vec2i(v1.x, v1.y)
     
@@ -90,7 +94,7 @@ class VecMath:
 
     @staticmethod
     def lerp(v1, v2, dt):
-        return VecMath.mul(VecMath.add(v1, v2), Vector2(dt, dt))
+        return Vector2(lerp(v1.x, v2.x, dt), lerp(v1.y, v2.y, dt))
 
     @staticmethod
     def abs(v1):
@@ -145,7 +149,7 @@ class GameObj:
     
     def logic(self):
         pass
-    
+
     def predraw(self):
         if self.origin == None:
             return
@@ -181,9 +185,29 @@ class Game:
         self.player = None
         self.deferred = []
         self.camera = None
+        self.editor_mode = False
+
+        self.frozen_cam = None
+        self.frozen_y_cam = None
     
+    def freeze_cam(self, where):
+        self.frozen_cam = where
+    
+    def reset_cam(self):
+        self.frozen_cam = None
+        self.frozen_y_cam = None
+    
+    def freeze_y_cam(self, y_val):
+        self.frozen_y_cam = y_val
+
     def reset_rot(self):
         rl_pop_matrix()
+    
+    def is_editor_mode(self):
+        return self.editor_mode
+    
+    def set_editor_mode(self, m):
+        self.editor_mode = m
 
     def calc_rot(self, rot, origin):
         rl_push_matrix()
@@ -257,6 +281,7 @@ class Game:
     def reset(self):
         self.player = None
         self.game_objects = []
+        get_game().reset_cam()
     
     def find_by_tag(self, name):
         for i in self.game_objects:
@@ -1060,7 +1085,104 @@ class GravityPad(Pad):
         player.position.y -= 20 * player.orientation
         player.flip_gravity()
         player.velocity.y = GravityOrb.STRENGTH * player.orientation
+
+class Trigger(GameObj):
+    RADIUS = 10
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(Vector2({self.position.x}, {self.position.y}))"
     
+    def clone(self):
+        return type(self)(clone_vec(self.position))
+    
+    def __init__(self, pos):
+        super().__init__()
+        self.position = pos
+        self.color = BLACK
+        self.label = "Trigger"
+
+        self.area = Rect(
+            clone_vec(self.position),
+            Vector2(5, 5)
+        )
+
+        self._already_activated = False
+    
+    def logic(self):
+        if self._already_activated: return
+        if (player := get_game().get_player()) is None: return
+        
+        if player.position.x >= self.position.x:
+            self.activate()
+            self._already_activated = True
+    
+    def draw(self):
+        if not get_game().is_editor_mode(): return
+        pos = VecMath.floor(self.position)
+
+        draw_poly(pos, 5, Trigger.RADIUS, 0, self.color)
+        draw_text(self.label, int(pos.x-measure_text(self.label, 14)//2), int(pos.y), 14, WHITE)
+    
+    def activate(self):
+        pass
+
+class CameraResetTrigger(Trigger):
+    COLOR = BLACK
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.color = CameraResetTrigger.COLOR
+        self.label = "Camera Reset"
+    
+    def activate(self):
+        get_game().reset_cam()
+
+class CameraStaticTrigger(Trigger):
+    COLOR = BLUE
+
+    def __repr__(self):
+        return f"CameraStaticTrigger(Vector2({self.position.x}, {self.position.y}), Vector2({self.where_to.x}, {self.where_to.y}))"
+
+    def clone(self):
+        return CameraStaticTrigger(clone_vec(self.position), clone_vec(self.where_to))
+
+    def __init__(self, pos, where_to):
+        super().__init__(pos)
+        self.where_to = where_to
+        self.color = CameraStaticTrigger.COLOR
+        self.label = "Camera Static"
+    
+    def draw(self):
+        super().draw()
+        if get_game().is_editor_mode():
+            draw_line_v(VecMath.int(self.position), VecMath.int(self.where_to), GREEN)
+    
+    def activate(self):
+        get_game().freeze_cam(clone_vec(self.where_to))
+
+class CameraYTrigger(Trigger):
+    COLOR = RED
+
+    def __repr__(self):
+        return f"CameraYTrigger(Vector2({self.position.x}, {self.position.y}), {self.where_y})"
+
+    def clone(self):
+        return CameraYTrigger(clone_vec(self.position), self.where_y)
+
+    def __init__(self, pos, where_y):
+        super().__init__(pos)
+        self.where_y = where_y
+        self.color = CameraYTrigger.COLOR
+        self.label = "Camera Y"
+    
+    def draw(self):
+        super().draw()
+        if get_game().is_editor_mode():
+            draw_line_v(VecMath.int(self.position), VecMath.int(Vector2(self.position.x, self.where_y)), GREEN)
+    
+    def activate(self):
+        get_game().freeze_y_cam(self.where_y)
+
 class WinWall(GameObj):
 
     WIDTH = 1_000
@@ -1453,6 +1575,63 @@ class GravityPadItem(Item):
     def place(self, where, _rot):
         return GravityPad(where)
 
+class CameraStaticTriggerItem(Item):
+    def __init__(self):
+        super().__init__("Camera Static Trigger")
+        self.where_to = None
+    
+    def special_trigger(self):
+        if self.where_to is None:
+            self.where_to = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam())
+        else:
+            self.where_to = None
+
+    def draw_preview(self, where):
+        draw_poly(where.to_raylib(), 5, Trigger.RADIUS, 0, CameraStaticTrigger.COLOR)
+
+        if self.where_to is not None:
+            draw_line_v(VecMath.int(where), VecMath.int(self.where_to), GREEN)
+    
+    def place(self, where, _rot):
+        if self.where_to is None:
+            return None
+        wt = clone_vec(self.where_to)
+        self.where_to = None
+        return CameraStaticTrigger(where, wt)
+
+class CameraResetTriggerItem(Item):
+    def __init__(self):
+        super().__init__("Camera Reset Trigger")
+    
+    def draw_preview(self, where):
+        draw_poly(where.to_raylib(), 5, Trigger.RADIUS, 0, CameraResetTrigger.COLOR)
+    
+    def place(self, where, _rot):
+        return CameraResetTrigger(where)
+
+class CameraYTriggerItem(Item):
+    def __init__(self):
+        super().__init__("Camera Y Trigger")
+        self.where_y = None
+    
+    def special_trigger(self):
+        if self.where_y is None:
+            self.where_y = get_screen_to_world_2d(get_mouse_position(), get_game().get_cam()).y
+        else:
+            self.where_y = None
+
+    def draw_preview(self, where):
+        draw_poly(where.to_raylib(), 5, Trigger.RADIUS, 0, CameraYTrigger.COLOR)
+        if self.where_y is not None:
+            draw_line_v(VecMath.int(where), VecMath.int(Vector2(where.x, self.where_y)), GREEN)
+    
+    def place(self, where, _rot):
+        if self.where_y is None:
+            return None
+        w = self.where_y
+        self.where_y = None
+        return CameraYTrigger(where, w)
+
 class ShipPortalItem(Item):
     def __init__(self):
         super().__init__("Ship Portal")
@@ -1623,7 +1802,7 @@ class EditorLevelManager(GameObj):
                 text = self.manager.held_item.name
                 draw_text(text, screen_width//2 - measure_text(text, 24)//2, 5, 24, BLACK)
 
-            draw_text(f"{cam.target.x}, {cam.target.y}", 10, 5, 54, BLACK )
+            draw_text(f"{round(cam.target.x, 2)}, {round(cam.target.y, 2)}", 10, 5, 54, BLACK )
             draw_fps(screen_width - 100, 20)
 
             if self.manager.esc_tick > 0:
@@ -1641,8 +1820,8 @@ class EditorLevelManager(GameObj):
         self.items = [
             None, PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
             GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            ShipPortalItem(), SquarePortalItem(), BallPortalItem(),
-            WavePortalItem(),
+            CameraResetTriggerItem(), CameraStaticTriggerItem(), CameraYTriggerItem(),
+            ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WavePortalItem(),
             WinWallItem()
         ]
         self.held_item_index = 0
@@ -1724,7 +1903,7 @@ class EditorLevelManager(GameObj):
         return saved
 
     def logic(self):
-        
+        get_game().set_editor_mode(True)
         if self.save_window is not None:
             if self.save_window.done:
                 self.save_window = None
@@ -1745,6 +1924,7 @@ class EditorLevelManager(GameObj):
             self.esc_tick += 1 * get_frame_time()
             if self.esc_tick > 3:
                 self.esc_tick = 0
+                get_game().set_editor_mode(False)
                 get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
 
         elif is_key_released(KeyboardKey(0).KEY_ESCAPE):
@@ -1754,6 +1934,7 @@ class EditorLevelManager(GameObj):
         self.cam_move()
 
         if is_key_pressed(KeyboardKey(0).KEY_T):
+            get_game().set_editor_mode(False)
             objs = [EditorLevelPreview(self), Player()]
             self.save_objs()
             for i in self.saved:
@@ -2403,16 +2584,27 @@ def main():
 
         
         player = game.get_player()
-        if player is not None:
-            desired_cam_y = 0
-            if not player.halted and player.position.y < -200:
-                # desired_cam_y = ((cam.target.y + player.position.y) * 0.6) + 100
-                desired_cam_y = VecMath.lerp(Vector2(cam.target.x, cam.target.y + 200), player.position, 0.5).y
 
-            desired_cam_x = player.position.x
+        if (freeze_loc := get_game().frozen_cam) is not None:
+            cam.target = VecMath.lerp(clone_vec(cam.target), clone_vec(freeze_loc), 0.5)
+
+        desired_cam_y_locked = False
+        if (freeze_y := get_game().frozen_y_cam) is not None:
+            desired_cam_y = lerp(cam.target.y, freeze_y, 0.5)
+            desired_cam_y_locked = True
+
+        if freeze_loc is None and player is not None:
+            if not desired_cam_y_locked:
+                desired_cam_y = 0
+
+                if not player.halted and player.position.y < -200:
+                    desired_cam_y = VecMath.lerp(Vector2(cam.target.x, cam.target.y + 200), player.position, 0.5).y # FIXME lmao
+
+            desired_cam_x = lerp(cam.target.x, player.position.x+200, 0.5)
+
             if player.halted:
                 desired_cam_x = get_game().find_by_tag("Win").position.x - 400
-            cam.target = Vector2(desired_cam_x+200, desired_cam_y)
+            cam.target = Vector2(desired_cam_x, desired_cam_y)
 
         uis = set()
         ground = None
