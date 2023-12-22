@@ -134,6 +134,8 @@ class GameObj:
         self.always_think = False
         self.rotation = 0
         self.origin = None
+
+        self._predrawed = False
     
     def clone(self):
         raise RuntimeError(f"Clone not supported for '{self.__class__}'")
@@ -151,9 +153,11 @@ class GameObj:
         rl_translatef(self.origin.x, self.origin.y, 0)
         rl_rotatef(self.rotation, 0, 0, -1)
         rl_translatef(-self.origin.x, -self.origin.y, 0)
+        self._predrawed = True
     
     def postdraw(self):
-        rl_pop_matrix()
+        if self._predrawed:
+            rl_pop_matrix()
     
     def draw(self):
         pass
@@ -2377,9 +2381,13 @@ def main():
 
         uis = set()
         ground = None
+        lvlman = None
         for i in visible:
-            if i.get_tag() == "Ground":
+            if i.get_tag() == "Ground": # yeah yeah i know i'm being inconsistant
                 ground = i
+                continue
+            if type(i) == EditorLevelManager:
+                lvlman = i
                 continue
             if i.is_ui_element():
                 uis.add(i)
@@ -2392,6 +2400,11 @@ def main():
             ground.predraw()
             ground.draw()
             ground.postdraw()
+
+        if lvlman is not None:
+            lvlman.predraw()
+            lvlman.draw()
+            lvlman.postdraw()
 
         
         game._call_deferred()
