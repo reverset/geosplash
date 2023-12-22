@@ -1106,7 +1106,7 @@ class Trigger(GameObj):
 
         self.area = Rect(
             clone_vec(self.position),
-            Vector2(5, 5)
+            Vector2(10, 10)
         )
 
         self._already_activated = False
@@ -2606,7 +2606,7 @@ def main():
             desired_cam_x = lerp(cam.target.x, player.position.x+200, 0.5)
 
             if player.halted:
-                desired_cam_x = get_game().find_by_tag("Win").position.x - 400
+                desired_cam_x = lerp(cam.target.x, get_game().find_by_tag("Win").position.x - 400, 0.3)
             cam.target = Vector2(desired_cam_x, desired_cam_y)
 
         uis = set()
