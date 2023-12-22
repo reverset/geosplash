@@ -1101,8 +1101,13 @@ class WinWall(GameObj):
             p = Particle(100)
             p.dir_x = -1
             p.color = GREEN
+            
+            if (preview := get_game().find_by_tag("Preview")):
+                l = lambda: preview.return_to_editor()
+            else:
+                l = lambda: get_game().reload_level()
 
-            timer = TimerObj(5, lambda: get_game().reload_level())
+            timer = TimerObj(5, l)
             get_game().make([timer, p])
 
             p.emit( clone_vec(self.player.position) )
@@ -1514,19 +1519,22 @@ class EditorLevelPreview(GameObj):
         self.editor = editor
         self.always_think = True
     
+    def return_to_editor(self):
+        def get_editor_objs():
+            objs = self.editor.get_saved()
+            for i in objs[:]:
+                if i.get_tag() == "Player" or i.get_tag() == "Preview":
+                    objs.remove(i)
+                    
+            objs.append(self.editor)
+            return objs
+
+        l = Level(get_game().get_level().name, get_editor_objs)
+        get_game().defer(lambda: get_game().set_level(EditorLevel(l)))
+
     def logic(self):
         if is_key_pressed(KeyboardKey(0).KEY_T):
-            def get_editor_objs():
-                objs = self.editor.get_saved()
-                for i in objs[:]:
-                    if i.get_tag() == "Player" or i.get_tag() == "Preview":
-                        objs.remove(i)
-                        
-                objs.append(self.editor)
-                return objs
-
-            l = Level(get_game().get_level().name, get_editor_objs)
-            get_game().defer(lambda: get_game().set_level(EditorLevel(l)))
+            self.return_to_editor()
 
 class EditorLevelManager(GameObj):
     ROUND_WIDTH = -1
