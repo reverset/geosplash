@@ -555,7 +555,10 @@ class Player(GameObj):
         if self.halted: return
         
         if is_key_released(KeyboardKey(0).KEY_ESCAPE):
-            get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
+            if (preview := get_game().find_by_tag("Preview")) is not None:
+                preview.return_to_editor()
+            else:
+                get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
 
         self.velocity.x = 5.5 # horizontal speed
         self._act_on_input()
