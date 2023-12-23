@@ -279,6 +279,9 @@ class Game:
         return self.player
     
     def reset(self):
+        global _attempts
+        _attempts = 0
+
         self.player = None
         self.game_objects = []
         get_game().reset_cam()
@@ -2187,6 +2190,14 @@ class RadioAngerLevel(Level):
     def level_data():
         return Level.from_file("levels/radioanger.level").get()
 
+class ImprovementLevel(Level):
+    def __init__(self):
+        super().__init__("Improvement", ImprovementLevel.level_data)
+    
+    @staticmethod
+    def level_data():
+        return Level.from_file("levels/Improvement.level").get()
+
 class UI:
     class Button(GameObj):
         def __init__(self, pos, dim, callback=lambda: None):
@@ -2333,12 +2344,13 @@ class UI:
 
 class LevelSelectScreen(Level):
     LEVELS = [
-        BlankLevel(),
+        ImprovementLevel(),
         TestLevel(), 
         HardLevel(), 
         ShipLevel(), 
         BallWaveLevel(),
-        RadioAngerLevel()
+        RadioAngerLevel(),
+        BlankLevel()
     ]
 
     class LevelSelectCamera(GameObj):
