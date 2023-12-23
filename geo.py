@@ -279,9 +279,6 @@ class Game:
         return self.player
     
     def reset(self):
-        global _attempts
-        _attempts = 0
-
         self.player = None
         self.game_objects = []
         get_game().reset_cam()
@@ -2449,6 +2446,9 @@ class LevelSelectScreen(Level):
             self.custombutton = None
 
         def manifested(self):
+            global _attempts
+            _attempts = 0
+
             get_game().get_cam().target = Vector2(0, 0)
             self.custombutton = get_game().find_by_tag("customlevels_button")
 
