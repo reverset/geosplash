@@ -532,8 +532,8 @@ class Player(GameObj):
         self.wave_points.append(VecMath.add(self.position, Vector2(0, Player.HEIGHT)))
 
     def wave_logic(self):
-        if self.orientation == 1 and not self.dead and self.position.y > Ground.ALTITUDE:
-            self.kill("slamming into the ground.")
+        if not self.dead and self.position.y > Ground.ALTITUDE - 50:
+            self.position.y = Ground.ALTITUDE - 51
 
         if Input.jump_released():
             if self.orientation == 1:
@@ -863,6 +863,70 @@ class Tile(GameObj):
         di = VecMath.floor_i(self.dim)
         
         draw_rectangle(v.x, v.y, di.x, di.y, DARKGRAY)
+        if DEBUG_MODE:
+            p = self.area.position
+            d = self.area.dimension
+            
+            p = VecMath.floor_i(p)
+            d = VecMath.floor_i(d)
+            draw_rectangle_lines(p.x, p.y, d.x, d.y, RED)
+
+class Slope(GameObj):
+    MID = 25
+
+    def clone(self):
+        return Slope(clone_vec(self.position), self.rotation)
+
+    def __repr__(self):
+        return f"Slope(Vector2({self.position.x}, {self.position.y}), {self.rotation})"
+
+    def __init__(self, pos, rot):
+        super().__init__()
+        self.position = pos
+        self.rotation = rot
+        self.origin = VecMath.add(self.position, Vector2(Slope.MID, Slope.MID))
+
+        self.area = Rect(
+            self.position,
+            Vector2(50, 50)
+        )
+        self.player = None
+    
+    def manifested(self):
+        self.player = get_game().get_player()
+    
+    def logic(self):
+        if self.player == None or self.player.area == None:
+            return
+        
+        bump = 0
+        verts = self.player.area.vertices()
+        if self.player.orientation == 1:
+            rel_verts = verts[2:4]
+            top_verts = verts[:2]
+        else:
+            rel_verts = verts[:2]
+            top_verts = verts[2:4]
+
+        for i in verts:
+            touching = self.area.check_collision_with_point(i)
+            ground_threshold = 25
+            
+            if touching:
+                if i in rel_verts:
+                    if self.rotation == 0:
+                        self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 10
+                    else: # FIXME XD
+                        self.player.grounded_y = self.position.y - (self.position.x - self.player.position.x)
+                
+    
+    def draw(self):
+        v = VecMath.floor_i(VecMath.add(self.position, Vector2(0, 50)))
+        
+        draw_triangle_strip((v.to_raylib(), VecMath.int(VecMath.add(v, Vector2(50, 0))), VecMath.int(VecMath.add(v, Vector2(50, -50)))), 3, DARKGRAY)
+    
+    def postdraw(self):
+        super().postdraw()
         if DEBUG_MODE:
             p = self.area.position
             d = self.area.dimension
@@ -1497,6 +1561,29 @@ class TileItem(Item):
     def place(self, where, _rot):
         return Tile( where.to_raylib(), Vector2(TileItem.WIDTH, TileItem.HEIGHT) )
 
+class SlopeItem(Item):
+    def __init__(self):
+        super().__init__("Slope")
+    
+    def supports_rotation(self):
+        return True
+
+    def origin(self, where):
+        return Vector2(where.x + Slope.MID, where.y + Slope.MID)
+
+    def offset(self, where):
+        w = VecMath.floor_i(where)
+        w.x -= TileItem.WIDTH // 2
+        w.y -= TileItem.HEIGHT // 2
+        return w
+
+    def draw_preview(self, where):
+        where.y += 50
+        draw_triangle_strip((where.to_raylib(), VecMath.int(VecMath.add(where, Vector2(50, 0))), VecMath.int(VecMath.add(where, Vector2(50, -50)))), 3, DARKGRAY)
+    
+    def place(self, where, rot):
+        return Slope( where.to_raylib(), rot)
+
 class SpikeItem(Item):
     def __init__(self):
         super().__init__("Spike")
@@ -1824,8 +1911,8 @@ class EditorLevelManager(GameObj):
         self.always_think = True
 
         self.items = [
-            None, PlayerSpawnItem(), SmartTile(), TileItem(), SpikeItem(), JumpOrbItem(),
-            GravityOrbItem(), JumpPadItem(), GravityPadItem(),
+            None, PlayerSpawnItem(), SmartTile(), SlopeItem(), TileItem(), SpikeItem(), 
+            JumpOrbItem(), GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             CameraResetTriggerItem(), CameraStaticTriggerItem(), CameraYTriggerItem(),
             ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WavePortalItem(),
             WinWallItem()
@@ -2601,11 +2688,11 @@ def main():
         player = game.get_player()
 
         if (freeze_loc := get_game().frozen_cam) is not None:
-            cam.target = VecMath.lerp(clone_vec(cam.target), clone_vec(freeze_loc), 0.5)
+            cam.target = VecMath.lerp(clone_vec(cam.target), clone_vec(freeze_loc), 0.3)
 
         desired_cam_y_locked = False
         if (freeze_y := get_game().frozen_y_cam) is not None:
-            desired_cam_y = lerp(cam.target.y, freeze_y, 0.5)
+            desired_cam_y = lerp(cam.target.y, freeze_y, 0.3)
             desired_cam_y_locked = True
 
         if freeze_loc is None and player is not None:
