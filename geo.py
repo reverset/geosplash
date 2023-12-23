@@ -2697,10 +2697,10 @@ def main():
 
         if freeze_loc is None and player is not None:
             if not desired_cam_y_locked:
-                desired_cam_y = lerp(cam.target.y, 0, 0.3)
+                desired_cam_y = lerp(cam.target.y, 0, 0.15)
 
                 if not player.halted and player.position.y < -200:
-                    desired_cam_y = lerp(cam.target.y, player.position.y, 0.15)
+                    desired_cam_y = lerp(cam.target.y, player.position.y+200, 0.15)
 
             desired_cam_x = lerp(cam.target.x, player.position.x+200, 0.15)
 
