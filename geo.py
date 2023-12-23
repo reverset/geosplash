@@ -834,6 +834,10 @@ class Tile(GameObj):
             ground_threshold = 25
             
             if touching:
+                if self.player.current_mode == "wave":
+                    self.player.kill("slammed on Tile")
+                    break
+
                 if i in top_verts:
                     if self.player.current_mode == "ship":
                         self.player.velocity.y = 1 * self.player.orientation
@@ -910,11 +914,25 @@ class Slope(GameObj):
             ground_threshold = 25
             
             if touching:
+                
+                # i have no clue what's happening here either.
                 if i in rel_verts:
-                    if self.rotation == 0:
-                        self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 10
-                    else: # FIXME XD
-                        self.player.grounded_y = self.position.y - (self.position.x - self.player.position.x)
+                    if self.player.orientation == 1:
+                        if self.rotation == 0:
+                            self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 10
+                        else:
+                            self.player.grounded_y = (self.position.y - (self.position.x - self.player.position.x)) + Player.HEIGHT//2
+                    else:
+                        if self.rotation == 90:
+                            self.player.grounded_y = (self.position.y - (self.position.x - self.player.position.x)) + Player.HEIGHT
+                        else:
+                            self.player.grounded_y = self.position.y - (abs(self.position.x - self.player.position.x)) + Player.HEIGHT
+
+                if self.player.current_mode == "wave":
+                    if self.player.orientation == 1 and self.player.position.y > self.player.grounded_y:
+                        self.player.kill("slope")
+                    elif self.player.orientation == -1 and self.player.position.y < self.player.grounded_y:
+                        self.player.kill("slope")
                 
     
     def draw(self):
