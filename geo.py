@@ -593,30 +593,20 @@ class Player(GameObj):
         for i in options:
             if abs(n - i) < close_value:
                 closest = i
-                close_value = i - n
+                close_value = abs(n - i)
         return closest
     
     def _square_handle_rotation(self):
-        # if not self.grounded:
-        #     self.rotation -= Player.ROTATE_SPEED * self.orientation
-        #     if self.rotation > 360:
-        #         self.rotation = 0
-        #     elif self.rotation < -360:
-        #         self.rotation = 0
-        # else:
-        #     close = self._closer(self.rotation, [0, 90, 180, 360, -90, -180, -360])
-        #     #print("close =", close, ", rot =", self.rotation)
-        #     STEP = 20
-        #     if abs(close - self.rotation) < STEP:
-        #         self.rotation = close
-        #     elif close > self.rotation:
-        #         self.rotation += STEP
-        #     elif close < self.rotation:
-        #         self.rotation -= STEP
-        if not self.grounded: # TODO: smoother snap
+        if not self.grounded:
+            if self.rotation >= 360:
+                self.rotation = 0
+            elif self.rotation <= -360:
+                self.rotation = 0
+
             self.rotation -= Player.ROTATE_SPEED * self.orientation
-        else:
-            self.rotation = 0
+        elif not Input.jump_down():
+            closest = self._closer(self.rotation, [0, 90, 180, 270, -90, -180, -270])
+            self.rotation = lerp(self.rotation, closest, 0.6)
     
     def _ship_handle_rotation(self):
         self.rotation = -self.velocity.y * 3
