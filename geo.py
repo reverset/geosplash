@@ -406,7 +406,7 @@ class Player(GameObj):
                     image_resize_nn(image, Player.SHIP_WIDTH*2, Player.SHIP_HEIGHT*4)
 
                     image_resize_nn(cube_image, Player.WIDTH//2, Player.HEIGHT//2)
-                    image_draw(image, cube_image, Rectangle(0, 0, cube_image.width, cube_image.height), Rectangle(20, 0, cube_image.width, cube_image.height), WHITE)
+                    image_draw(image, cube_image, Rectangle(0, 0, cube_image.width, cube_image.height), Rectangle(20, 5, cube_image.width, cube_image.height), WHITE)
 
                     Player._SHIP_SPRITE = load_texture_from_image(image)
 
