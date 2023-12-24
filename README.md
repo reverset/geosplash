@@ -21,7 +21,7 @@ $ python3 geo.py
 $ python3 ./compile.py
 ```
 
-### MacOS NOTE:
+### Windows & MacOS NOTE:
 - Ensure you have `pip install imageio`, so that the icon is setup properly on the executable.
 
 ### Linux NOTE:

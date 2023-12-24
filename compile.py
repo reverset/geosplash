@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
 
 plat = platform.system()
 if plat == "Windows":
-    COMMAND = "nuitka ./geo.py --standalone --windows-icon-from-ico=./icons/Geometry_Splash_Logo.ico"
+    COMMAND = "nuitka ./geo.py --standalone --windows-icon-from-ico=./icons/Geometry_Splash_Logo.png"
 elif plat == "Linux":
     COMMAND = "nuitka ./geo.py --standalone --linux-icon=./icons/Geometry_Splash_Logo.png -o geo"
 elif plat == "Darwin":
