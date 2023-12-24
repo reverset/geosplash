@@ -10,20 +10,16 @@ it would get inconsistant. I considered fixing this but since this project has c
 spot, so it'll just have to stay the way it is.
 
 ## To Run
+Ensure you have `pip install raylib` installed.
+
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Pyinstaller) Tested on Windows & Linux
+## To Compile (Using Nuitka) Tested on Windows
 ### Tested with Python 3.11
 ```console
 $ python3 ./compile.py
 ```
-
-## Alternatively, you can use Nuitka to compile it but keep the following notes in mind.
-
-### Windows NOTE:
-
-- Windows Defender will block it, I'm not sure why though.
 
 ### MacOS NOTE:
 - Ensure you have `pip install imageio`, so that the icon is setup properly on the executable.

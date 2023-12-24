@@ -2,6 +2,7 @@ import subprocess
 import os
 import platform
 import sys
+import shutil
 
 from zipfile import ZipFile
 
@@ -26,11 +27,11 @@ if len(sys.argv) > 1:
 
 plat = platform.system()
 if plat == "Windows":
-    COMMAND = "pyinstaller --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.ico --distpath=."
+    COMMAND = "nuitka ./geo.py --standalone --windows-icon-from-ico=./icons/Geometry_Splash_Logo.ico"
 elif plat == "Linux":
-    COMMAND = "pyinstaller --onefile ./geo.py --distpath=." # icon not supported on linux :(
+    COMMAND = "nuitka ./geo.py --standalone --linux-icon=./icons/Geometry_Splash_Logo.png"
 elif plat == "Darwin":
-    COMMAND = "pyinstaller --windowed --onefile ./geo.py --icon=./icons/Geometry_Splash_Logo.png --distpath=."
+    COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py --macos-app-icon=./icons/Geometry_Splash_Logo.png"
 
 
 def get_all_in_folder(folder):
@@ -43,22 +44,29 @@ def get_all_in_folder(folder):
 
 def get_main_executable():
     if plat == "Windows":
-        return APP_NAME + ".exe"
+        return "./geo/" + APP_NAME + ".exe"
     elif plat == "Linux":
-        return APP_NAME
+        return "./geo/" + APP_NAME
     elif plat == "Darwin":
         return APP_NAME + ".app"
 
 def get_relevant_files():
-    files = [get_main_executable()]
-    files += get_all_in_folder("./textures")
-    files += get_all_in_folder("./levels")
-    files += get_all_in_folder("./custom_levels/")
+    files = []
+    if plat == "Windows":
+        print("Copying resource directories ...")
+        shutil.copytree("./custom_levels/", "./geo.dist/custom_levels/", dirs_exist_ok=True)
+        shutil.copytree("./levels/", "./geo.dist/levels/", dirs_exist_ok=True)
+        shutil.copytree("./textures/", "./geo.dist/textures/", dirs_exist_ok=True)
+        
+        files += get_all_in_folder("./geo.dist/")
+    else:
+        print("LINUX & MACOS TODO") # TODO
+        raise NotImplementedError()
     
     return files
 
 if not ZIP_ONLY:
-    if AS_MODULE: # remove me probably
+    if AS_MODULE:
         output = subprocess.run(PYTHON_CMD + " -m " + COMMAND, shell=True)
     else:
         output = subprocess.run(COMMAND, shell=True)

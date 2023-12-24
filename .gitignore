@@ -1,8 +1,6 @@
 .vscode/
 __pycache__/
-geo.exe
 geosplash.zip
-geo.spec
-build/
-geo
-geo.app
+geo.build/
+geo.dist/
+geo/
