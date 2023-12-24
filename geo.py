@@ -1310,14 +1310,19 @@ class WinWall(GameObj):
             p.emit( clone_vec(self.player.position) )
             timer.start()
 
-        self.rot_vel += 0.3 * self.player.orientation
-        self.velocity.x += 0.3
-        self.velocity.y -= 0.3 * self.player.orientation
+        if self.passed:
+            self.player.position.x = self.position.x
+            self.player.position.y = -11_000
+            self.player.velocity = Vector2(0, 0)
+        else:
+            self.rot_vel += 0.3 * self.player.orientation
+            self.velocity.x += 0.3
+            self.velocity.y -= 0.3 * self.player.orientation
 
-        self.player.position.x += self.velocity.x
-        self.player.position.y += self.velocity.y
+            self.player.position.x += self.velocity.x
+            self.player.position.y += self.velocity.y
 
-        self.player.rotation += int(self.rot_vel)
+            self.player.rotation += int(self.rot_vel)
 
     def logic(self):
         if self.player is None: return
@@ -2750,6 +2755,18 @@ def main():
 
         for i in uis:
             i.ui_draw()
+        
+        if player is not None:
+            win = game.find_by_tag("Win")
+            if win is not None:
+                distance = abs(win.position.x - player.position.x)
+                percent = 100 - (distance / (win.position.x + 400)) * 100 # I added 400 cause the player starts -400 units back.
+                
+                text = f"{round(percent, 1)}%"
+                draw_rectangle(screen_width//2 - 170, 10, int(percent)*3, 20, BLUE)
+                draw_rectangle_lines(screen_width//2 - 170, 10, 300, 20, DARKBLUE)
+
+                draw_text(text, screen_width//2 + 150, 10, 24, BLACK)
 
         end_drawing()
         
