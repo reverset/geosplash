@@ -14,6 +14,7 @@ For MacOS, make sure you have imageio installed (pip install imageio)
 """
 
 APP_NAME = "geo"
+DESTINATION = "./geo.dist/"
 AS_MODULE = False
 PYTHON_CMD = "python3.11"
 ZIP_ONLY = False
@@ -24,6 +25,12 @@ if len(sys.argv) > 1:
         AS_MODULE = True
     elif args[0] == "zip":
         ZIP_ONLY = True
+    elif args[0] == "clean":
+        print("Removing destination & build directories ...")
+        shutil.rmtree(DESTINATION)
+        shutil.rmtree("./geo.build/")
+        print("Done!")
+        exit()
 
 plat = platform.system()
 if plat == "Windows":
@@ -50,18 +57,19 @@ def get_main_executable():
     elif plat == "Darwin":
         return APP_NAME + ".app"
 
-def get_relevant_files():
+def get_relevant_files(): # When this function is called, the current working directory should be set to DESTINATION
+    print(f"Working dir: {os.getcwd()}")
     files = []
     if plat == "Windows":
         print("Copying resource directories ...")
-        shutil.copytree("./custom_levels/", "./geo.dist/custom_levels/", dirs_exist_ok=True)
-        shutil.copytree("./levels/", "./geo.dist/levels/", dirs_exist_ok=True)
-        shutil.copytree("./textures/", "./geo.dist/textures/", dirs_exist_ok=True)
+        shutil.copytree("../custom_levels/", "./custom_levels/", dirs_exist_ok=True)
+        shutil.copytree("../levels/", "./levels/", dirs_exist_ok=True)
+        shutil.copytree("../textures/", "./textures/", dirs_exist_ok=True)
         
-        files += get_all_in_folder("./geo.dist/")
+        files += get_all_in_folder("./")
     else:
-        print("LINUX & MACOS TODO") # TODO
-        raise NotImplementedError()
+        # TODO
+        raise NotImplementedError("LINUX & MACOS TODO")
     
     return files
 
@@ -73,12 +81,13 @@ if not ZIP_ONLY:
 
 
 print("Zipping the following files:")
+os.chdir(DESTINATION)
 desired_files = get_relevant_files()
 
 for file in desired_files:
     print("=>", file)
 
-with ZipFile('geosplash.zip', 'w') as zip:
+with ZipFile('../geosplash.zip', 'w') as zip:
     for file in desired_files:
         zip.write(file)
 
