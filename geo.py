@@ -707,16 +707,13 @@ class Player(GameObj):
         
     def square_draw(self):
         pos = VecMath.floor_i(self.position)
-        draw_texture(Player.get_cube_sprite(), pos.x, pos.y, BLUE)
+        draw_texture(Player.get_cube_sprite(), pos.x, pos.y, Player.COLOR)
     
     def ship_draw(self):
         pos = VecMath.floor_i(self.position)
         pos.x -= Player.WIDTH//4
         pos.y -= Player.HEIGHT//4
 
-        # draw_ellipse(pos.x, pos.y, Player.SHIP_WIDTH, Player.SHIP_HEIGHT, BLUE)
-        
-        # draw_texture_ex(Player.get_cube_sprite(), VecMath.add(pos, Vector2(20, 0)), 0, 0.6, BLUE)
         draw_texture(Player.get_ship_sprite(self.orientation), pos.x, pos.y, Player.COLOR)
 
     def ball_draw(self):
