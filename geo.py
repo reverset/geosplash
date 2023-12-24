@@ -126,7 +126,19 @@ class Rect:
 
     def __repr__(self):
         return f"Rect(pos=V2({self.position.x}, {self.position.y}), dim=V2({self.dimension.x}, {self.dimension.y}))"
-        
+
+class RaylibImage:
+    def __init__(self, image_path):
+        self.image_path = image_path
+        self.image = None
+    
+    def __enter__(self):
+        self.image = load_image(self.image_path)
+        return self.image
+
+    def __exit__(self, *args):
+        if self.image is not None:
+            unload_image(self.image)
 
 def clone_vec(vec):
     return Vector2(vec.x, vec.y)
@@ -344,6 +356,8 @@ class AttemptCounter(GameObj):
         draw_text("Attempt #" + repr(_attempts), p.x, p.y, 48, BLACK)
 
 class Player(GameObj):
+    COLOR = BLUE
+
     WIDTH = 50
     HEIGHT = 50
     GRAVITY = 1
@@ -362,6 +376,57 @@ class Player(GameObj):
     WAVE_AREA_DIM = Vector2(WIDTH//2, HEIGHT//2)
 
     ROTATE_SPEED = 7
+
+
+    CUBE_SPRITE_PATH = "./textures/player/cubes/default.png"
+    _CUBE_SPRITE = None
+
+    SHIP_SPRITE_PATH = "./textures/player/ships/default.png"
+    _SHIP_SPRITE = None
+    _SHIP_SPITE_FLIPPED_V = None
+
+    BALL_SPRITE_PATH = "./textures/player/circles/default.png"
+    _BALL_SPRITE = None
+
+    @staticmethod
+    def get_cube_sprite():
+        if Player._CUBE_SPRITE is None:
+            with RaylibImage(Player.CUBE_SPRITE_PATH) as image:
+                image_resize_nn(image, Player.WIDTH, Player.HEIGHT)
+                Player._CUBE_SPRITE = load_texture_from_image(image) 
+                # but wait you never unload the player texture! Is it really necessary though? The player always exists.
+        
+        return Player._CUBE_SPRITE
+
+    @staticmethod
+    def get_ship_sprite(orientation):
+        if Player._SHIP_SPRITE is None or Player._SHIP_SPITE_FLIPPED_V is None:
+            with RaylibImage(Player.SHIP_SPRITE_PATH) as image:
+                with RaylibImage(Player.CUBE_SPRITE_PATH) as cube_image:
+                    image_resize_nn(image, Player.SHIP_WIDTH*2, Player.SHIP_HEIGHT*4)
+
+                    image_resize_nn(cube_image, Player.WIDTH//2, Player.HEIGHT//2)
+                    image_draw(image, cube_image, Rectangle(0, 0, cube_image.width, cube_image.height), Rectangle(20, 0, cube_image.width, cube_image.height), Player.COLOR)
+
+                    Player._SHIP_SPRITE = load_texture_from_image(image)
+
+                    image_flip_vertical(image)
+                    Player._SHIP_SPITE_FLIPPED_V = load_texture_from_image(image)
+        
+        if orientation == 1:
+            return Player._SHIP_SPRITE
+        else:
+            return Player._SHIP_SPITE_FLIPPED_V
+    
+    @staticmethod
+    def get_ball_sprite():
+        if Player._BALL_SPRITE is None:
+            with RaylibImage(Player.BALL_SPRITE_PATH) as image:
+                image_resize_nn(image, Player.BALL_SIZE * 2, Player.BALL_SIZE *2)
+
+                Player._BALL_SPRITE = load_texture_from_image(image)
+        
+        return Player._BALL_SPRITE
 
     def __repr__(self):
         return f"Player(Vector2({self.position.x}, {self.position.y}))"
@@ -421,6 +486,8 @@ class Player(GameObj):
 
         self.ball_can_jump = True
         self.wave_points = []
+
+        self.horizontal_speed = 5.5
         
     
     def manifested(self):
@@ -513,6 +580,7 @@ class Player(GameObj):
     
     def ball_logic(self):
         self._fall(Player.GRAVITY)
+        self._ball_handle_rotation()
 
         if self.wantJump and self.ball_can_jump and self.grounded:
             self.ball_can_jump = False
@@ -560,7 +628,7 @@ class Player(GameObj):
             else:
                 get_game().defer(lambda: get_game().set_level(LevelSelectScreen()))
 
-        self.velocity.x = 5.5 # horizontal speed
+        self.velocity.x = self.horizontal_speed
         self._act_on_input()
         
         self.modes[self.current_mode][0]()
@@ -611,6 +679,10 @@ class Player(GameObj):
     def _ship_handle_rotation(self):
         self.rotation = -self.velocity.y * 3
     
+    def _ball_handle_rotation(self):
+        if self.grounded:
+            self.rotation -= self.horizontal_speed * self.orientation
+    
     def _update_velocity(self):
         self.velocity.y = clamp(self.velocity.y, -20, 20)
         self.position = VecMath.add(self.position, self.velocity)
@@ -635,21 +707,24 @@ class Player(GameObj):
         
     def square_draw(self):
         pos = VecMath.floor_i(self.position)
-        draw_rectangle(pos.x, pos.y, Player.WIDTH, Player.HEIGHT, BLUE)
+        draw_texture(Player.get_cube_sprite(), pos.x, pos.y, BLUE)
     
     def ship_draw(self):
         pos = VecMath.floor_i(self.position)
-        pos.x += Player.WIDTH//2
-        pos.y += Player.HEIGHT//2
+        pos.x -= Player.WIDTH//4
+        pos.y -= Player.HEIGHT//4
 
-        draw_ellipse(pos.x, pos.y, Player.SHIP_WIDTH, Player.SHIP_HEIGHT, BLUE)
+        # draw_ellipse(pos.x, pos.y, Player.SHIP_WIDTH, Player.SHIP_HEIGHT, BLUE)
+        
+        # draw_texture_ex(Player.get_cube_sprite(), VecMath.add(pos, Vector2(20, 0)), 0, 0.6, BLUE)
+        draw_texture(Player.get_ship_sprite(self.orientation), pos.x, pos.y, Player.COLOR)
 
     def ball_draw(self):
         pos = clone_vec(self.position)
-        pos = VecMath.add(pos, Vector2(Player.WIDTH//2, Player.HEIGHT//2))
+        pos = VecMath.sub(pos, Vector2(Player.BALL_SIZE//6, Player.BALL_SIZE//6))
         pos = VecMath.floor_i(pos)
 
-        draw_circle(pos.x, pos.y, Player.BALL_SIZE, BLUE)
+        draw_texture(Player.get_ball_sprite(), pos.x, pos.y, Player.COLOR)
     
     def wave_draw(self):
         pos = VecMath.add(self.position, Vector2(Player.WIDTH//2, Player.HEIGHT))
@@ -662,7 +737,7 @@ class Player(GameObj):
             top,
             left,
             right,
-            BLUE
+            Player.COLOR
         )
 
     def draw(self):
