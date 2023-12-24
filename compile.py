@@ -36,7 +36,7 @@ plat = platform.system()
 if plat == "Windows":
     COMMAND = "nuitka ./geo.py --standalone --windows-icon-from-ico=./icons/Geometry_Splash_Logo.ico"
 elif plat == "Linux":
-    COMMAND = "nuitka ./geo.py --standalone --linux-icon=./icons/Geometry_Splash_Logo.png"
+    COMMAND = "nuitka ./geo.py --standalone --linux-icon=./icons/Geometry_Splash_Logo.png -o geo"
 elif plat == "Darwin":
     COMMAND = "nuitka --standalone --macos-create-app-bundle ./geo.py --macos-app-icon=./icons/Geometry_Splash_Logo.png"
 
@@ -57,19 +57,23 @@ def get_main_executable():
     elif plat == "Darwin":
         return APP_NAME + ".app"
 
+def copy_resources(src, dst):
+    print("RESOURCE: Copying files ...")
+    shutil.copytree(src + "/custom_levels/", dst + "/custom_levels/", dirs_exist_ok=True)
+    shutil.copytree(src + "/levels/", dst + "/levels/", dirs_exist_ok=True)
+    shutil.copytree(src + "/textures/", dst + "/textures/", dirs_exist_ok=True)
+    print("RESOURCE: All files copied.")
+        
+
 def get_relevant_files(): # When this function is called, the current working directory should be set to DESTINATION
     print(f"Working dir: {os.getcwd()}")
     files = []
-    if plat == "Windows":
-        print("Copying resource directories ...")
-        shutil.copytree("../custom_levels/", "./custom_levels/", dirs_exist_ok=True)
-        shutil.copytree("../levels/", "./levels/", dirs_exist_ok=True)
-        shutil.copytree("../textures/", "./textures/", dirs_exist_ok=True)
-        
+    if plat == "Windows" or plat == "Linux":
+        copy_resources("..", ".")
         files += get_all_in_folder("./")
     else:
-        # TODO
-        raise NotImplementedError("LINUX & MACOS TODO")
+        # TODO since I am creating an app bundle, I shouldn't copy the resources all into it.
+        raise NotImplementedError("MACOS TODO")
     
     return files
 

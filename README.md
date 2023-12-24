@@ -15,7 +15,7 @@ Ensure you have `pip install raylib` installed.
 ```console
 $ python3 geo.py
 ```
-## To Compile (Using Nuitka) Tested on Windows
+## To Compile (Using Nuitka) Tested on Windows and Linux
 ### Tested with Python 3.11
 ```console
 $ python3 ./compile.py
