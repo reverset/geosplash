@@ -981,12 +981,18 @@ class Slope(GameObj):
                 if i in rel_verts:
                     if self.player.orientation == 1:
                         if self.rotation == 0:
-                            self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 10
+                            self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 5
+                            if self.player.grounded:
+                                self.player.position.y -= 5
+                                self.player.velocity.y = -10
                         else:
                             self.player.grounded_y = (self.position.y - (self.position.x - self.player.position.x)) + Player.HEIGHT//2
                     else:
                         if self.rotation == 90:
                             self.player.grounded_y = (self.position.y - (self.position.x - self.player.position.x)) + Player.HEIGHT
+                            if self.player.grounded:
+                                self.player.position.y += 10
+                                self.player.velocity.y = 10
                         else:
                             self.player.grounded_y = self.position.y - (abs(self.position.x - self.player.position.x)) + Player.HEIGHT
 
