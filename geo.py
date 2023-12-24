@@ -983,7 +983,7 @@ class Slope(GameObj):
                         if self.rotation == 0:
                             self.player.grounded_y = self.position.y + (abs(self.position.x - self.player.position.x)) - 5
                             if self.player.grounded:
-                                self.player.position.y -= 5
+                                self.player.position.y -= 10
                                 self.player.velocity.y = -10
                         else:
                             self.player.grounded_y = (self.position.y - (self.position.x - self.player.position.x)) + Player.HEIGHT//2
@@ -2373,6 +2373,14 @@ class ImprovementLevel(Level):
     def level_data():
         return Level.from_file("levels/Improvement.level").get()
 
+class SlippyLevel(Level):
+    def __init__(self):
+        super().__init__("Slippy", SlippyLevel.level_data)
+    
+    @staticmethod
+    def level_data():
+        return Level.from_file("levels/Slippy.level").get()
+
 class UI:
     class Button(GameObj):
         def __init__(self, pos, dim, callback=lambda: None):
@@ -2519,6 +2527,7 @@ class UI:
 
 class LevelSelectScreen(Level):
     LEVELS = [
+        SlippyLevel(),
         ImprovementLevel(),
         TestLevel(), 
         HardLevel(), 
