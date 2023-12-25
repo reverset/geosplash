@@ -2744,6 +2744,7 @@ def main():
     global win_inited
 
     game = Game()
+    set_config_flags(ConfigFlags.FLAG_WINDOW_RESIZABLE)
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
@@ -2758,11 +2759,24 @@ def main():
 
     game.set_level(LevelSelectScreen()) # SET LEVEL
 
+    clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
+
+    fullscreened = False
+
     last_frame = get_time()
     delta = 1 / 60
     while not window_should_close() and not game.should_end:
-        if is_key_down(KeyboardKey(0).KEY_F11):
-            toggle_fullscreen()
+        if is_key_pressed(KeyboardKey(0).KEY_F11):
+            if fullscreened:
+                clear_window_state(ConfigFlags.FLAG_WINDOW_UNDECORATED)
+                set_window_size(screen_width, screen_height)
+                set_window_position(screen_width//4, screen_height//4)
+            else:
+                set_window_position(0, 0)
+                set_window_size(get_monitor_width(get_current_monitor()), get_monitor_height(get_current_monitor()))
+                set_window_state(ConfigFlags.FLAG_WINDOW_UNDECORATED)
+            fullscreened = not fullscreened
+
 
         visible_threshold = 500
         visible = []
@@ -2778,6 +2792,11 @@ def main():
         for i in visible:
             i.logic()
         
+        desired_zoom = get_screen_width() / screen_width
+
+        game.camera.zoom = desired_zoom
+        game.camera.offset = Vector2(get_screen_width()//2, get_screen_height()//2)
+
         # Drawing
         begin_drawing()
         clear_background(Color(200, 200, 200))
