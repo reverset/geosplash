@@ -2745,11 +2745,13 @@ def main():
 
     game = Game()
     set_config_flags(ConfigFlags.FLAG_WINDOW_RESIZABLE)
+    set_window_state(ConfigFlags.FLAG_MSAA_4X_HINT)
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
     set_target_fps(60)
     set_exit_key(-1)
+
 
     logo = load_image("textures/Geometry_Splash_Logo.png")
     set_window_icon(logo)
