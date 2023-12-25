@@ -1904,9 +1904,9 @@ class EditorLevelManager(GameObj):
         def __init__(self):
             super().__init__()
             self.elements = [
-                UI.TextField(Vector2(screen_width//4, 100), Vector2(700, 200), 64, banned=[KeyboardKey(0).KEY_BACKSLASH, KeyboardKey(0).KEY_SLASH], placeholder="Enter Name", callback=self.do_save),
-                UI.BetterButton(Vector2(screen_width//4+100, 400), Vector2(500, 70), callback=self.do_save),
-                UI.TextDisplay(Vector2(screen_width//2-50, 410), "SAVE", 54, WHITE)
+                UI.TextField(Vector2(get_screen_width()//4, 100), Vector2(700, 200), 64, banned=[KeyboardKey(0).KEY_BACKSLASH, KeyboardKey(0).KEY_SLASH], placeholder="Enter Name", callback=self.do_save),
+                UI.BetterButton(Vector2(get_screen_width()//4+100, 400), Vector2(500, 70), callback=self.do_save),
+                UI.TextDisplay(Vector2(get_screen_width()//2-50, 410), "SAVE", 54, WHITE)
             ]
             self.visible = True
             self.elements[0].text = get_game().get_level().name
@@ -1955,7 +1955,7 @@ class EditorLevelManager(GameObj):
                     i.ui_draw()
             else:
                 self.elements[0].selected = False
-                draw_text("Saving ...", screen_width//2, 100, 44, BLACK)
+                draw_text("Saving ...", get_screen_width()//2, 100, 44, BLACK)
     
     class HUD(GameObj):
 
@@ -1981,14 +1981,14 @@ class EditorLevelManager(GameObj):
 
             if self.manager.held_item is not None:
                 text = self.manager.held_item.name
-                draw_text(text, screen_width//2 - measure_text(text, 24)//2, 5, 24, BLACK)
+                draw_text(text, get_screen_width()//2 - measure_text(text, 24)//2, 5, 24, BLACK)
 
             draw_text(f"{round(cam.target.x, 2)}, {round(cam.target.y, 2)}", 10, 5, 54, BLACK )
-            draw_fps(screen_width - 100, 20)
+            draw_fps(get_screen_width() - 100, 20)
 
             if self.manager.esc_tick > 0:
                 text = "exiting ... (hold)"
-                draw_text(text, screen_width//2 - measure_text(text, 34)//2, 200, 34, BLACK)
+                draw_text(text, get_screen_width()//2 - measure_text(text, 34)//2, 200, 34, BLACK)
 
 
     def get_tag(self):
@@ -2869,10 +2869,10 @@ def main():
                 percent = 100 - (distance / (win.position.x + 400)) * 100 # I added 400 cause the player starts -400 units back.
                 
                 text = f"{round(percent, 1)}%"
-                draw_rectangle(screen_width//2 - 170, 10, int(percent)*3, 20, BLUE)
-                draw_rectangle_lines(screen_width//2 - 170, 10, 300, 20, DARKBLUE)
+                draw_rectangle(get_screen_width()//2 - 170, 10, int(percent)*3, 20, BLUE)
+                draw_rectangle_lines(get_screen_width()//2 - 170, 10, 300, 20, DARKBLUE)
 
-                draw_text(text, screen_width//2 + 150, 10, 24, BLACK)
+                draw_text(text, get_screen_width()//2 + 150, 10, 24, BLACK)
 
         end_drawing()
         
