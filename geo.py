@@ -16,6 +16,8 @@ import sys
 import time
 import os
 
+# base color is 127, 127, 127
+
 DEBUG_MODE = False
 
 screen_width = 1280
@@ -1496,6 +1498,13 @@ class Portal(GameObj):
     def draw(self):
         p = VecMath.floor_i(self.position)
         draw_rectangle(p.x, p.y, Portal.WIDTH, Portal.HEIGHT, self.color)
+    
+    def postdraw(self):
+        super().postdraw()
+        if DEBUG_MODE:
+            p = VecMath.floor_i(self.area.position)
+            d = VecMath.floor_i(self.area.dimension)
+            draw_rectangle_lines(p.x, p.y, d.x, d.y, RED)
 
     def apply(self):
         pass
@@ -1539,6 +1548,136 @@ class WavePortal(Portal):
     
     def apply(self):
         self.player.set_mode("wave")
+
+class DefaultSpeedPortal(Portal): # could be abstracted but whatever lmao
+    SPEED = 5.5
+
+    WIDTH = 50
+    HEIGHT = 50
+
+    SPRITE_PATH = "textures/portals/defaultspeed.png"
+    _SPRITE = None
+
+    @staticmethod
+    def get_sprite():
+        if DefaultSpeedPortal._SPRITE is None:
+            with RaylibImage(DefaultSpeedPortal.SPRITE_PATH) as image:
+                image_resize_nn(image, DefaultSpeedPortal.WIDTH, DefaultSpeedPortal.HEIGHT)
+                DefaultSpeedPortal._SPRITE = load_texture_from_image(image)
+
+        return DefaultSpeedPortal._SPRITE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.area = Rect(
+            VecMath.sub(pos, Vector2(0, 10)),
+            Vector2(DefaultSpeedPortal.WIDTH, DefaultSpeedPortal.HEIGHT + 20 )
+        )
+    
+    def draw(self):
+        pos = VecMath.floor_i(self.position)
+        draw_texture(DefaultSpeedPortal.get_sprite(), pos.x, pos.y, WHITE)
+    
+    def apply(self):
+        get_game().get_player().horizontal_speed = DefaultSpeedPortal.SPEED
+
+class FastSpeedPortal(Portal):
+    SPEED = 7
+
+    WIDTH = 50
+    HEIGHT = 50
+
+    SPRITE_PATH = "textures/portals/fastspeedportal.png"
+    _SPRITE = None
+
+    @staticmethod
+    def get_sprite():
+        if FastSpeedPortal._SPRITE is None:
+            with RaylibImage(FastSpeedPortal.SPRITE_PATH) as image:
+                image_resize_nn(image, FastSpeedPortal.WIDTH, FastSpeedPortal.HEIGHT)
+                FastSpeedPortal._SPRITE = load_texture_from_image(image)
+
+        return FastSpeedPortal._SPRITE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.area = Rect(
+            VecMath.sub(pos, Vector2(0, 10)),
+            Vector2(FastSpeedPortal.WIDTH, FastSpeedPortal.HEIGHT + 20 )
+        )
+    
+    def draw(self):
+        pos = VecMath.floor_i(self.position)
+        draw_texture(FastSpeedPortal.get_sprite(), pos.x, pos.y, WHITE)
+    
+    def apply(self):
+        get_game().get_player().horizontal_speed = FastSpeedPortal.SPEED
+
+class VeryFastSpeedPortal(Portal):
+    SPEED = 10
+
+    WIDTH = 70
+    HEIGHT = 70
+
+    SPRITE_PATH = "textures/portals/veryfastportal.png"
+    _SPRITE = None
+
+    @staticmethod
+    def get_sprite():
+        if VeryFastSpeedPortal._SPRITE is None:
+            with RaylibImage(VeryFastSpeedPortal.SPRITE_PATH) as image:
+                image_resize_nn(image, VeryFastSpeedPortal.WIDTH, VeryFastSpeedPortal.HEIGHT)
+                VeryFastSpeedPortal._SPRITE = load_texture_from_image(image)
+
+        return VeryFastSpeedPortal._SPRITE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.area = Rect(
+            VecMath.sub(pos, Vector2(-10, 10)),
+            Vector2(VeryFastSpeedPortal.WIDTH, VeryFastSpeedPortal.HEIGHT + 20 )
+        )
+    
+    def draw(self):
+        pos = VecMath.floor_i(self.position)
+        draw_texture(VeryFastSpeedPortal.get_sprite(), pos.x, pos.y, WHITE)
+    
+    def apply(self):
+        get_game().get_player().horizontal_speed = VeryFastSpeedPortal.SPEED
+
+
+class FastestSpeedPortal(Portal):
+    SPEED = 15
+
+    WIDTH = 60
+    HEIGHT = 100
+
+    SPRITE_PATH = "textures/portals/fastestspeedportal.png"
+    _SPRITE = None
+
+    @staticmethod
+    def get_sprite():
+        if FastestSpeedPortal._SPRITE is None:
+            with RaylibImage(FastestSpeedPortal.SPRITE_PATH) as image:
+                image_resize_nn(image, FastestSpeedPortal.WIDTH, FastestSpeedPortal.HEIGHT)
+                FastestSpeedPortal._SPRITE = load_texture_from_image(image)
+
+        return FastestSpeedPortal._SPRITE
+
+    def __init__(self, pos):
+        super().__init__(pos)
+        self.area = Rect(
+            clone_vec(pos),
+            Vector2(FastestSpeedPortal.WIDTH, FastestSpeedPortal.HEIGHT )
+        )
+    
+    def draw(self):
+        pos = VecMath.floor_i(self.position)
+        draw_texture(FastestSpeedPortal.get_sprite(), pos.x, pos.y, WHITE)
+    
+    def apply(self):
+        get_game().get_player().horizontal_speed = FastestSpeedPortal.SPEED
+
 
 class Item:
     def __init__(self, name):
@@ -1843,6 +1982,46 @@ class BallPortalItem(Item):
     def draw_preview(self, where):
         draw_rectangle(where.x, where.y, Portal.WIDTH, Portal.HEIGHT, BallPortal.COLOR)
 
+class DefaultSpeedPortalItem(Item):
+    def __init__(self):
+        super().__init__("Slow Speed Portal")
+    
+    def place(self, where, _rot):
+        return DefaultSpeedPortal(where)
+    
+    def draw_preview(self, where):
+        draw_texture(DefaultSpeedPortal.get_sprite(), where.x, where.y, WHITE)
+
+class FastSpeedPortalItem(Item):
+    def __init__(self):
+        super().__init__("Fast Speed Portal")
+    
+    def place(self, where, _rot):
+        return FastSpeedPortal(where)
+    
+    def draw_preview(self, where):
+        draw_texture(FastSpeedPortal.get_sprite(), where.x, where.y, WHITE)
+
+class VeryFastSpeedPortalItem(Item):
+    def __init__(self):
+        super().__init__("Very Fast Speed Portal")
+    
+    def place(self, where, _rot):
+        return VeryFastSpeedPortal(where)
+    
+    def draw_preview(self, where):
+        draw_texture(VeryFastSpeedPortal.get_sprite(), where.x, where.y, WHITE)
+
+class FastestSpeedPortalItem(Item):
+    def __init__(self):
+        super().__init__("Fastest Speed Portal")
+    
+    def place(self, where, _rot):
+        return FastestSpeedPortal(where)
+    
+    def draw_preview(self, where):
+        draw_texture(FastestSpeedPortal.get_sprite(), where.x, where.y, WHITE)
+
 class WavePortalItem(Item):
     def __init__(self):
         super().__init__("Wave Portal")
@@ -2002,6 +2181,7 @@ class EditorLevelManager(GameObj):
             None, PlayerSpawnItem(), SmartTile(), SlopeItem(), TileItem(), SpikeItem(), 
             JumpOrbItem(), GravityOrbItem(), JumpPadItem(), GravityPadItem(),
             CameraResetTriggerItem(), CameraStaticTriggerItem(), CameraYTriggerItem(),
+            DefaultSpeedPortalItem(), FastSpeedPortalItem(), VeryFastSpeedPortalItem(), FastestSpeedPortalItem(),
             ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WavePortalItem(),
             WinWallItem()
         ]
@@ -2745,7 +2925,6 @@ def main():
 
     game = Game()
     set_config_flags(ConfigFlags.FLAG_WINDOW_RESIZABLE)
-    set_window_state(ConfigFlags.FLAG_MSAA_4X_HINT)
     
     win_inited = True
     init_window(screen_width, screen_height, "Geometry Splash")
