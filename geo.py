@@ -587,7 +587,8 @@ class Player(GameObj):
         if self.wantJump and self.ball_can_jump and self.grounded:
             self.ball_can_jump = False
             self.flip_gravity()
-            self.position.y += 1 * self.orientation
+            self.position.y += 5 * self.orientation
+            self.velocity.y += 5 * self.orientation
         
         if Input.jump_released():
             self.ball_can_jump = True
