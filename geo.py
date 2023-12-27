@@ -1337,6 +1337,7 @@ class CameraYTrigger(Trigger):
             draw_line_v(VecMath.int(self.position), VecMath.int(Vector2(self.position.x, self.where_y)), GREEN)
     
     def activate(self):
+        get_game().freeze_cam(None)
         get_game().freeze_y_cam(self.where_y)
 
 class WinWall(GameObj):
@@ -2562,6 +2563,14 @@ class SlippyLevel(Level):
     def level_data():
         return Level.from_file("levels/Slippy.level").get()
 
+class LudicrousLevel(Level):
+    def __init__(self):
+        super().__init__("Ludicrous", LudicrousLevel.level_data)
+    
+    @staticmethod
+    def level_data():
+        return Level.from_file("levels/Ludicrous.level").get()
+
 class UI:
     class Button(GameObj):
         def __init__(self, pos, dim, callback=lambda: None):
@@ -2710,7 +2719,8 @@ class LevelSelectScreen(Level):
     LEVELS = [
         SlippyLevel(),
         ImprovementLevel(),
-        TestLevel(), 
+        TestLevel(),
+        LudicrousLevel(),
         HardLevel(), 
         ShipLevel(), 
         BallWaveLevel(),
