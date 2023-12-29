@@ -141,6 +141,7 @@ class RaylibImage:
     def __exit__(self, *args):
         if self.image is not None:
             unload_image(self.image)
+            self.image = None
 
 def clone_vec(vec):
     return Vector2(vec.x, vec.y)
