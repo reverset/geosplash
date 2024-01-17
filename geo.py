@@ -3,7 +3,7 @@
 """
 Created on Tue Nov 14 13:32:55 2023
 
-@author: Sea bass Rueda
+@author: Sea bass
 """
 
 import itertools as itert
