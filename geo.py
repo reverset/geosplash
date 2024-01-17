@@ -8,6 +8,8 @@ Created on Tue Nov 14 13:32:55 2023
 
 import itertools as itert
 from typing import Iterator
+
+from raylib import Vector2Divide, Vector2Negate, Vector2Subtract
 try:
     from itertools import pairwise
 except ImportError:
@@ -304,7 +306,10 @@ class Game:
     
     def reset(self):
         self.player = None
-        self.game_objects = []
+        for obj in self.game_objects[:]:
+            obj.destroyed()
+
+        self.game_objects.clear()
         get_game().reset_cam()
     
     def find_by_tag(self, name):
@@ -2939,6 +2944,44 @@ class LevelSelectScreen(Level):
         
         return objs
 
+class Background(GameObj):
+    def __init__(self, sprite_path, tint = WHITE, parallax_speed = 0):
+        super().__init__()
+        self.always_think = True
+        self.sprite_path = sprite_path
+        self.parallax_speed = parallax_speed
+        self.sprite = None
+        self.tint = tint
+        self.built_offsetx = 0
+    
+    def manifested(self):
+        self.built_offsetx = 0
+    
+    def get_sprite(self):
+        if self.sprite is None:
+            with RaylibImage(self.sprite_path) as image:
+                self.sprite = load_texture_from_image(image)
+
+        return self.sprite
+    
+    def unload(self):
+        if self.sprite is not None:
+            unload_texture(self.sprite)
+            self.sprite = None
+
+    def destroyed(self):
+        self.unload()
+
+    def draw(self):
+        cam = get_game().get_cam()
+        offset = Vector2Subtract(cam.target, cam.offset)
+        if self.parallax_speed != 0:
+            self.built_offsetx -= self.parallax_speed
+            offset.x += self.built_offsetx
+
+        draw_texture_ex(self.get_sprite(), offset, 0, 1, self.tint)
+
+
 win_inited = False
 def main():
     global game
@@ -2961,9 +3004,13 @@ def main():
 
     game.set_level(LevelSelectScreen()) # SET LEVEL
 
+    back = Background("textures/Geometry_Splash_Logo.png", parallax_speed=0.1)
+    game.make([back])
+
     clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
 
     fullscreened = False
+    background_obj = None
 
     last_frame = get_time()
     delta = 1 / 60
@@ -2984,13 +3031,19 @@ def main():
         visible = []
         for i in game.game_objects:
             if i.always_think:
-                visible.append(i)
+                if isinstance(i, Background):
+                    background_obj = i
+                else:
+                    visible.append(i)
                 continue
             if i.position.x + visible_threshold >= cam.target.x - (screen_width/2):
                 if cam.target.x + (screen_width/2) >= i.position.x - visible_threshold:
                     visible.append(i)
-                
+        
         # Logic
+        if background_obj is not None:
+            background_obj.logic()
+            
         for i in visible:
             i.logic()
         
@@ -3004,7 +3057,10 @@ def main():
         clear_background(Color(200, 200, 200))
         
         begin_mode_2d(cam)
-
+        if background_obj is not None:
+            background_obj.predraw()
+            background_obj.draw()
+            background_obj.postdraw()
         
         player = game.get_player()
 
@@ -3083,6 +3139,8 @@ def main():
     
     close_window()
     win_inited = False
+
+    game.reset()
 
 if __name__ == "__main__":
     try:
