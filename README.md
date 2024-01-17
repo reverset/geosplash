@@ -8,6 +8,7 @@ If you want to play an actually fun game, you should probably go play the real G
 - I am aware the game is capped at 60 fps. This is because all calculations rely on happening every 16 ms, if the FPS were to change
 it would get inconsistant. I considered fixing this but since this project has came pretty far already, it'd take a lot of time to fix every
 spot, so it'll just have to stay the way it is.
+- A lot of this code is bad, pretty bad, really bad, or absolutely terrible. I know and I likely won't fix it, this project was just a joke to begin with.
 
 ## To Run
 Ensure you have `pip install raylib` installed.

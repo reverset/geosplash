@@ -9,7 +9,7 @@ Created on Tue Nov 14 13:32:55 2023
 import itertools as itert
 from typing import Iterator
 
-from raylib import Vector2Divide, Vector2Negate, Vector2Subtract
+from raylib import CheckCollisionRecs, Vector2Divide, Vector2Negate, Vector2Subtract
 try:
     from itertools import pairwise
 except ImportError:
@@ -129,13 +129,26 @@ class Rect:
         
         return [up_left, up_right, bot_left, bot_right]
     
-    def check_collision_with_point(rec, point):
+    def check_collision_with_point(rec, point): # Why 'rec' and not 'self'? I have no clue what i was thinking here.
         v = rec.vertices()
         up_left, up_right, bot_left, bot_right = v[0], v[1], v[2], v[3]
         if up_left.x <= point.x <= bot_right.x:
             if up_left.y <= point.y <= bot_left.y:
                 return True
         return False
+
+    def to_raylib(self):
+        return Rectangle(
+            self.position.x,
+            self.position.y,
+            self.dimension.x,
+            self.dimension.y
+        )
+
+    def check_collision_with_rect(self, other_rect): # I should just use raylib functions for the other methods, oh well the more you know.
+        my_rect = self.to_raylib()
+        other_rec = other_rect.to_raylib()
+        return CheckCollisionRecs(my_rect, other_rec)
 
     def __repr__(self):
         return f"Rect(pos=V2({self.position.x}, {self.position.y}), dim=V2({self.dimension.x}, {self.dimension.y}))"
@@ -251,22 +264,6 @@ class Game:
         for i in range(len(self.deferred)-1, -1, -1):
             self.deferred[i]()
             self.deferred.pop(i)
-    
-    """
-    WARNING ONLY CHECKS IF COLLIDES WITH VERTICES
-    """
-    def sphere_check(self, pos, radius, ignore = None):
-        for i in self.game_objects:
-            if i == ignore: continue
-            
-            if i.area == None: continue
-            verts = i.area.vertices()
-            if verts == None: continue
-        
-            for j in verts:
-                if VecMath.distance(j, pos) <= radius:
-                    return i
-        return None
     
     def set_level(self, lvl):
         self.reset()
