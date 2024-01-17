@@ -3001,8 +3001,8 @@ def main():
 
     game.set_level(LevelSelectScreen()) # SET LEVEL
 
-    back = Background("textures/Geometry_Splash_Logo.png", parallax_speed=0.1)
-    game.make([back])
+    # back = Background("textures/Geometry_Splash_Logo.png", parallax_speed=0.1)
+    # game.make([back])
 
     clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
 

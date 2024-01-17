@@ -27,3 +27,9 @@ $ python3 ./compile.py
 
 ### Linux NOTE:
 - Ensure you have python3.11-devel installed.
+
+# Screenshots
+
+![Screenshot of gameplay](icons/screenshot.png)
+![Screenshot of ship gameplay](icons/screenshot2.png)
+![Screenshot of upside-down gameplay](icons/screenshot3.png)
