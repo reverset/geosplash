@@ -311,6 +311,9 @@ class Game:
 
         self.game_objects.clear()
         get_game().reset_cam()
+        
+        back = Background("textures/backgrounds/ocean_sunrise.png", parallax_speed=0.5)
+        game.make([back])
     
     def find_by_tag(self, name):
         for i in self.game_objects:
@@ -1232,7 +1235,8 @@ class JumpPad(Pad):
     def activate(self):
         player = get_game().get_player()
         
-        player.position.y -= 10 * player.orientation
+        player.position.y = self.position.y - (60 * player.orientation)
+        # player.position.y -= 10 * player.orientation
         player.velocity.y = JumpOrb.STRENGTH * player.orientation
 
 class GravityPad(Pad):
@@ -2940,6 +2944,12 @@ class LevelSelectScreen(Level):
         return objs
 
 class Background(GameObj):
+    def __repr__(self):
+        return f"Background('{self.sprite_path}', {self.tint}, Vector2({self.stretch.x}, {self.stretch.y}), {self.parallax_speed})"
+
+    def clone(self):
+        return Background(self.sprite_path, self.tint, self.stretch, self.parallax_speed)
+
     def __init__(self, sprite_path, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0):
         super().__init__()
         self.always_think = True
@@ -2972,9 +2982,12 @@ class Background(GameObj):
     def draw(self):
         cam = get_game().get_cam()
         offset = Vector2Subtract(cam.target, cam.offset)
-        if self.parallax_speed != 0:
-            self.built_offsetx -= self.parallax_speed
-            offset.x += self.built_offsetx
+        if self.parallax_speed != 0 and (player := get_game().get_player()) is not None:
+            if not player.halted:
+                self.built_offsetx -= self.parallax_speed
+                offset.x += self.built_offsetx
+            else:
+                offset.x += self.built_offsetx
 
         draw_texture_ex(self.get_sprite(), offset, 0, 1, self.tint)
 
@@ -3000,9 +3013,6 @@ def main():
     game.camera = cam
 
     game.set_level(LevelSelectScreen()) # SET LEVEL
-
-    back = Background("textures/Geometry_Splash_Logo.png", stretch=Vector2(10, 1), parallax_speed=0.1)
-    game.make([back])
 
     clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
 
