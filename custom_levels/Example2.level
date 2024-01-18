@@ -1,2 +1,2 @@
 Example2
-[Player(Vector2(-400.0, 0.0)), Ground(), WavePortal(Vector2(210.0, 85.0))]
+[Player(Vector2(-400.0, 0.0)), Ground(), WavePortal(Vector2(210.0, 85.0)), FastestSpeedPortal(Vector2(210.0, 85.0))]

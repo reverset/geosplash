@@ -2226,7 +2226,7 @@ class EditorLevelManager(GameObj):
     def save_objs(self):
         self.saved.clear()
         for i in get_game().game_objects:
-            if type(i) == EditorLevelManager or i.get_tag().startswith("editor"):
+            if type(i) == EditorLevelManager or i.get_tag().startswith("editor") or isinstance(i, Background):
                 continue
             self.saved.append(i.clone())        
 
@@ -2945,23 +2945,20 @@ class LevelSelectScreen(Level):
 
 class Background(GameObj):
     def __repr__(self):
-        return f"Background('{self.sprite_path}', {self.tint}, Vector2({self.stretch.x}, {self.stretch.y}), {self.parallax_speed})"
+        return f"Background('{self.sprite_path}', {self.centerx}, {self.tint}, Vector2({self.stretch.x}, {self.stretch.y}), {self.parallax_speed})"
 
     def clone(self):
-        return Background(self.sprite_path, self.tint, self.stretch, self.parallax_speed)
+        return Background(self.sprite_path, self.centerx, self.tint, self.stretch, self.parallax_speed)
 
-    def __init__(self, sprite_path, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0):
+    def __init__(self, sprite_path, centerx=0, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0):
         super().__init__()
         self.always_think = True
         self.sprite_path = sprite_path
         self.parallax_speed = parallax_speed
         self.sprite = None
         self.tint = tint
-        self.built_offsetx = 0
         self.stretch = stretch
-    
-    def manifested(self):
-        self.built_offsetx = 0
+        self.centerx = centerx
     
     def get_sprite(self):
         if self.sprite is None:
@@ -2982,14 +2979,15 @@ class Background(GameObj):
     def draw(self):
         cam = get_game().get_cam()
         offset = Vector2Subtract(cam.target, cam.offset)
-        if self.parallax_speed != 0 and (player := get_game().get_player()) is not None:
-            if not player.halted:
-                self.built_offsetx -= self.parallax_speed
-                offset.x += self.built_offsetx
-            else:
-                offset.x += self.built_offsetx
+        offset.x -= cam.target.x * self.parallax_speed
+        offset.x += self.centerx
 
-        draw_texture_ex(self.get_sprite(), offset, 0, 1, self.tint)
+        sprite = self.get_sprite()
+
+        draw_texture_ex(sprite, offset, 0, 1, self.tint)
+        draw_texture_ex(sprite, Vector2(offset.x + sprite.width, offset.y), 0, 1, self.tint)
+        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*2), offset.y), 0, 1, self.tint)
+        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*3), offset.y), 0, 1, self.tint)
 
 
 win_inited = False
