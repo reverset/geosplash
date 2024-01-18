@@ -311,9 +311,6 @@ class Game:
 
         self.game_objects.clear()
         get_game().reset_cam()
-        
-        back = Background("textures/backgrounds/ocean_sunrise.png", parallax_speed=0.1)
-        game.make([back])
     
     def find_by_tag(self, name):
         for i in self.game_objects:
@@ -1354,6 +1351,34 @@ class CameraYTrigger(Trigger):
         get_game().freeze_cam(None)
         get_game().freeze_y_cam(self.where_y)
 
+class BackgroundChangeTrigger(Trigger):
+    COLOR = ORANGE
+
+    def __repr__(self):
+        return f"BackgroundChangeTrigger(Vector2({self.position.x}, {self.position.y}), {self.background_id})"
+
+    def clone(self):
+        return BackgroundChangeTrigger(clone_vec(self.position), self.background_id)
+    
+    def __init__(self, pos, background_id):
+        super().__init__(pos)
+        self.color = BackgroundChangeTrigger.COLOR
+        self.label = "Background Change"
+        self.background_id = background_id
+    
+    def draw(self):
+        super().draw()
+        if get_game().is_editor_mode():
+            draw_text(f"background: {self.background_id}", int(self.position.x + 10), int(self.position.y - 10), 12, GREEN)
+    
+    def activate(self):
+        back = BackgroundLoader.path_from_id(self.background_id)
+        if back is not None:
+            get_game().background = Background(back, int(self.position.x), parallax_speed=0.1, fade=True)
+        else:
+            get_game().background = None
+
+
 class WinWall(GameObj):
 
     WIDTH = 1_000
@@ -1714,8 +1739,8 @@ class Item:
     def origin(self, where):
         return Vector2(0, 0)
 
-    def place(self, where):
-        pass
+    def place(self, where, _rot):
+        sys.stderr.write("Called base-class function 'place()', this should be overwritten!\n")
 
 class PlayerSpawnItem(Item):
     def __init__(self):
@@ -1968,6 +1993,23 @@ class CameraYTriggerItem(Item):
         self.where_y = None
         return CameraYTrigger(where, w)
 
+class BackgroundChangeTriggerItem(Item):
+    def __init__(self):
+        super().__init__("Background Change Trigger")
+        self.background_id = 0
+    
+    def special_trigger(self):
+        self.background_id += 1
+        if self.background_id >= BackgroundLoader.backgrounds():
+            self.background_id = 0
+    
+    def draw_preview(self, where):
+        draw_poly(where.to_raylib(), 5, Trigger.RADIUS, 0, BackgroundChangeTrigger.COLOR)
+        draw_text(f"background: {self.background_id}", where.x + 10, where.y, 12, GREEN)
+    
+    def place(self, where, _rot):
+        return BackgroundChangeTrigger(where, self.background_id)
+
 class ShipPortalItem(Item):
     def __init__(self):
         super().__init__("Ship Portal")
@@ -2196,7 +2238,7 @@ class EditorLevelManager(GameObj):
         self.items = [
             None, PlayerSpawnItem(), SmartTile(), SlopeItem(), TileItem(), SpikeItem(), 
             JumpOrbItem(), GravityOrbItem(), JumpPadItem(), GravityPadItem(),
-            CameraResetTriggerItem(), CameraStaticTriggerItem(), CameraYTriggerItem(),
+            CameraResetTriggerItem(), CameraStaticTriggerItem(), CameraYTriggerItem(), BackgroundChangeTriggerItem(),
             DefaultSpeedPortalItem(), FastSpeedPortalItem(), VeryFastSpeedPortalItem(), FastestSpeedPortalItem(),
             ShipPortalItem(), SquarePortalItem(), BallPortalItem(), WavePortalItem(),
             WinWallItem()
@@ -2943,14 +2985,53 @@ class LevelSelectScreen(Level):
         
         return objs
 
+class BackgroundLoader:
+    ID_MAP = [
+        None, 
+        "textures/backgrounds/ocean_sunrise.png"
+    ]
+
+    CACHED = {}
+
+    @staticmethod
+    def path_from_id(id):
+        return BackgroundLoader.ID_MAP[id]
+    
+    @staticmethod
+    def backgrounds():
+        return len(BackgroundLoader.ID_MAP)
+    
+    @staticmethod
+    def get_sprite_cache(background):
+        if background.sprite_path in BackgroundLoader.CACHED:
+            return BackgroundLoader.CACHED[background.sprite_path]
+        
+        if len(BackgroundLoader.CACHED) > 5:
+            k = BackgroundLoader.CACHED.keys()[0]
+            sprite = BackgroundLoader.CACHED[k]
+            unload_texture(sprite)
+            BackgroundLoader.CACHED.remove(k)
+            print("released a background in cache")
+
+        sprite = background.get_sprite()
+        BackgroundLoader.CACHED[background.sprite_path] = sprite
+        return sprite
+    
+    @staticmethod
+    def clear_cache():
+        for k,v in BackgroundLoader.CACHED.items():
+            print(f"unloading '{k}'")
+            unload_texture(v)
+        BackgroundLoader.CACHED.clear()
+
 class Background(GameObj):
     def __repr__(self):
-        return f"Background('{self.sprite_path}', {self.centerx}, {self.tint}, Vector2({self.stretch.x}, {self.stretch.y}), {self.parallax_speed})"
+        return f"Background('{self.sprite_path}', {self.centerx}, {self.tint}, Vector2({self.stretch.x}, {self.stretch.y}), {self.parallax_speed}, {self.fade})"
 
     def clone(self):
-        return Background(self.sprite_path, self.centerx, self.tint, self.stretch, self.parallax_speed)
+        return Background(self.sprite_path, self.centerx, self.tint, self.stretch, self.parallax_speed, self.fade)
 
-    def __init__(self, sprite_path, centerx=0, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0):
+    def __init__(self, sprite_path, centerx=0, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0, fade=False):
         super().__init__()
         self.always_think = True
         self.sprite_path = sprite_path
@@ -2959,6 +3040,12 @@ class Background(GameObj):
         self.tint = tint
         self.stretch = stretch
         self.centerx = centerx
+        self.moved = False
+        self.fade = fade
+        self.start_time = get_time()
+    
+    def manifested(self):
+        self.start_time = get_time()
     
     def get_sprite(self):
         if self.sprite is None:
@@ -2967,6 +3054,9 @@ class Background(GameObj):
                 self.sprite = load_texture_from_image(image)
 
         return self.sprite
+
+    def cache_sprite(self):
+        return BackgroundLoader.get_sprite_cache(self)
     
     def unload(self):
         if self.sprite is not None:
@@ -2979,15 +3069,22 @@ class Background(GameObj):
     def draw(self):
         cam = get_game().get_cam()
         offset = Vector2Subtract(cam.target, cam.offset)
-        offset.x -= cam.target.x * self.parallax_speed
-        offset.x += self.centerx
+        offset.x -= (cam.target.x + self.centerx) * self.parallax_speed
 
-        sprite = self.get_sprite()
+        sprite = self.cache_sprite()
 
-        draw_texture_ex(sprite, offset, 0, 1, self.tint)
-        draw_texture_ex(sprite, Vector2(offset.x + sprite.width, offset.y), 0, 1, self.tint)
-        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*2), offset.y), 0, 1, self.tint)
-        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*3), offset.y), 0, 1, self.tint)
+        if self.fade:
+            desired = int((get_time() - self.start_time) * 200)
+            if desired >= 256:
+                desired = 255
+            tint = Color(*self.tint[:3], desired)
+        else:
+            tint = self.tint
+            
+        draw_texture_ex(sprite, offset, 0, 1, tint)
+        draw_texture_ex(sprite, Vector2(offset.x + sprite.width, offset.y), 0, 1, tint)
+        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*2), offset.y), 0, 1, tint)
+        draw_texture_ex(sprite, Vector2(offset.x + (sprite.width*3), offset.y), 0, 1, tint)
 
 
 win_inited = False
@@ -3145,6 +3242,7 @@ def main():
     win_inited = False
 
     game.reset()
+    BackgroundLoader.clear_cache()
 
 if __name__ == "__main__":
     try:
