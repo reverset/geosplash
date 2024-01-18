@@ -312,7 +312,7 @@ class Game:
         self.game_objects.clear()
         get_game().reset_cam()
         
-        back = Background("textures/backgrounds/ocean_sunrise.png", parallax_speed=0.5)
+        back = Background("textures/backgrounds/ocean_sunrise.png", parallax_speed=0.1)
         game.make([back])
     
     def find_by_tag(self, name):
