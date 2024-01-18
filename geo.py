@@ -216,6 +216,7 @@ class GameObj:
     
     def destroyed(self):
         pass
+
 class Game:
     def __init__(self):
         self.game_objects = []
@@ -225,6 +226,7 @@ class Game:
         self.deferred = []
         self.camera = None
         self.editor_mode = False
+        self.background = None
 
         self.frozen_cam = None
         self.frozen_y_cam = None
@@ -303,6 +305,7 @@ class Game:
     
     def reset(self):
         self.player = None
+        self.background = None
         for obj in self.game_objects[:]:
             obj.destroyed()
 
@@ -1210,13 +1213,9 @@ class Pad(GameObj):
         if self.already_touched: return
         if self.player is None or self.player.area is None: return
         
-        verts = self.area.vertices()
-        
-        for i in verts:
-            if Rect.check_collision_with_point(self.player.area, i):
-                self.already_touched = True
-                self.activate()
-                break
+        if self.area.check_collision_with_rect(self.player.area):
+            self.already_touched = True
+            self.activate()
             
     def activate(self):
         pass
@@ -3007,7 +3006,6 @@ def main():
     clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
 
     fullscreened = False
-    background_obj = None
 
     last_frame = get_time()
     delta = 1 / 60
@@ -3029,7 +3027,7 @@ def main():
         for i in game.game_objects:
             if i.always_think:
                 if isinstance(i, Background):
-                    background_obj = i
+                    game.background = i
                 else:
                     visible.append(i)
                 continue
@@ -3038,8 +3036,8 @@ def main():
                     visible.append(i)
         
         # Logic
-        if background_obj is not None:
-            background_obj.logic()
+        if game.background is not None:
+            game.background.logic()
             
         for i in visible:
             i.logic()
@@ -3054,10 +3052,10 @@ def main():
         clear_background(Color(200, 200, 200))
         
         begin_mode_2d(cam)
-        if background_obj is not None:
-            background_obj.predraw()
-            background_obj.draw()
-            background_obj.postdraw()
+        if game.background is not None:
+            game.background.predraw()
+            game.background.draw()
+            game.background.postdraw()
         
         player = game.get_player()
 
