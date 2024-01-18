@@ -1232,7 +1232,7 @@ class JumpPad(Pad):
     def activate(self):
         player = get_game().get_player()
         
-        player.position.y -= 1 * player.orientation
+        player.position.y -= 10 * player.orientation
         player.velocity.y = JumpOrb.STRENGTH * player.orientation
 
 class GravityPad(Pad):
