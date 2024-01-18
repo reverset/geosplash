@@ -387,7 +387,6 @@ class Player(GameObj):
 
     BALL_SIZE = 30
 
-    WAVE_SPEED = 7
     WAVE_COLOR = DARKBLUE
     WAVE_THICKNESS = 15
     WAVE_AREA_DIM = Vector2(WIDTH//2, HEIGHT//2)
@@ -630,10 +629,10 @@ class Player(GameObj):
                 self.wave_add_point()
 
         if self.wantJump:
-            self.velocity.y = -Player.WAVE_SPEED * self.orientation
+            self.velocity.y = -self.horizontal_speed * self.orientation
             self.rotation = -45 if self.orientation == 1 else -135
         else:
-            self.velocity.y = Player.WAVE_SPEED * self.orientation
+            self.velocity.y = self.horizontal_speed * self.orientation
             self.rotation = -135 if self.orientation == 1 else -45
 
     def logic(self):
@@ -2941,7 +2940,7 @@ class LevelSelectScreen(Level):
         return objs
 
 class Background(GameObj):
-    def __init__(self, sprite_path, tint = WHITE, parallax_speed = 0):
+    def __init__(self, sprite_path, tint = WHITE, stretch=Vector2(1,1), parallax_speed = 0):
         super().__init__()
         self.always_think = True
         self.sprite_path = sprite_path
@@ -2949,6 +2948,7 @@ class Background(GameObj):
         self.sprite = None
         self.tint = tint
         self.built_offsetx = 0
+        self.stretch = stretch
     
     def manifested(self):
         self.built_offsetx = 0
@@ -2956,6 +2956,7 @@ class Background(GameObj):
     def get_sprite(self):
         if self.sprite is None:
             with RaylibImage(self.sprite_path) as image:
+                image_resize_nn(image, int(image.width * self.stretch.x), int(image.height * self.stretch.y))
                 self.sprite = load_texture_from_image(image)
 
         return self.sprite
@@ -3000,8 +3001,8 @@ def main():
 
     game.set_level(LevelSelectScreen()) # SET LEVEL
 
-    # back = Background("textures/Geometry_Splash_Logo.png", parallax_speed=0.1)
-    # game.make([back])
+    back = Background("textures/Geometry_Splash_Logo.png", stretch=Vector2(10, 1), parallax_speed=0.1)
+    game.make([back])
 
     clear_window_state(ConfigFlags.FLAG_WINDOW_UNFOCUSED)
 
